@@ -417,12 +417,6 @@ func LoadLightNodeServicersFromFiles() {
 		}
 	}
 
-	// init lookup map
-	types.GlobalServicerPrivateKeysMap = make(map[string]crypto.PrivateKey)
-	for _, pk := range types.GlobalServicerPrivateKeys {
-		address := sdk.Address(pk.PublicKey().Address())
-		types.GlobalServicerPrivateKeysMap[address.String()] = pk
-	}
 }
 
 func InitLogger() (logger log.Logger) {
