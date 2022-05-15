@@ -33,8 +33,6 @@ func InitConfig(chains *HostedBlockchains, logger log.Logger, c types.Config) {
 		globalEvidenceSealedMapMap = make(map[string]sync.Map)
 		globalSessionCacheMap = make(map[string]*CacheStorage)
 		for key := range GlobalServicerPrivateKeysMap {
-
-			fmt.Println("Adding key" + key + " to evidence cache map")
 			globalEvidenceCacheMap[key] = new(CacheStorage)
 			globalEvidenceSealedMapMap[key] = sync.Map{}
 			globalSessionCacheMap[key] = new(CacheStorage)
