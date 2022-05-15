@@ -29,15 +29,17 @@ func InitConfig(chains *HostedBlockchains, logger log.Logger, c types.Config) {
 		globalEvidenceCache.Init(c.PocketConfig.DataDir, c.PocketConfig.EvidenceDBName, c.TendermintConfig.LevelDBOptions, c.PocketConfig.MaxEvidenceCacheEntires, false)
 		globalSessionCache.Init(c.PocketConfig.DataDir, "", c.TendermintConfig.LevelDBOptions, c.PocketConfig.MaxSessionCacheEntries, true)
 
-		globalEvidenceCacheMap = make(map[string]*CacheStorage)
-		globalEvidenceSealedMapMap = make(map[string]sync.Map)
-		globalSessionCacheMap = make(map[string]*CacheStorage)
-		for key := range GlobalServicerPrivateKeysMap {
-			globalEvidenceCacheMap[key] = new(CacheStorage)
-			globalEvidenceSealedMapMap[key] = sync.Map{}
-			globalSessionCacheMap[key] = new(CacheStorage)
-			globalEvidenceCacheMap[key].Init(c.PocketConfig.DataDir, c.PocketConfig.EvidenceDBName+"-"+key, c.TendermintConfig.LevelDBOptions, c.PocketConfig.MaxEvidenceCacheEntires, false)
-			globalSessionCacheMap[key].Init(c.PocketConfig.DataDir, "", c.TendermintConfig.LevelDBOptions, c.PocketConfig.MaxSessionCacheEntries, true)
+		if c.PocketConfig.LeanPocket {
+			globalEvidenceCacheMap = make(map[string]*CacheStorage)
+			globalEvidenceSealedMapMap = make(map[string]sync.Map)
+			globalSessionCacheMap = make(map[string]*CacheStorage)
+			for key := range GlobalServicerPrivateKeysMap {
+				globalEvidenceCacheMap[key] = new(CacheStorage)
+				globalEvidenceSealedMapMap[key] = sync.Map{}
+				globalSessionCacheMap[key] = new(CacheStorage)
+				globalEvidenceCacheMap[key].Init(c.PocketConfig.DataDir, c.PocketConfig.EvidenceDBName+"-"+key, c.TendermintConfig.LevelDBOptions, c.PocketConfig.MaxEvidenceCacheEntires, false)
+				globalSessionCacheMap[key].Init(c.PocketConfig.DataDir, "", c.TendermintConfig.LevelDBOptions, c.PocketConfig.MaxSessionCacheEntries, true)
+			}
 		}
 
 		InitGlobalServiceMetric(chains, logger, c.PocketConfig.PrometheusAddr, c.PocketConfig.PrometheusMaxOpenfiles)
