@@ -227,7 +227,6 @@ func (r Relay) Execute(hostedBlockchains *HostedBlockchains) (string, sdk.Error)
 	res, err := executeHTTPRequest(r.Payload.Data, url, GlobalPocketConfig.UserAgent, chain.BasicAuth, r.Payload.Method, r.Payload.Headers)
 	if err != nil {
 		// metric track
-
 		return res, NewHTTPExecutionError(ModuleName, err)
 	}
 	return res, nil

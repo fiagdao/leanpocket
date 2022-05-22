@@ -87,7 +87,6 @@ func (k Keeper) HandleRelayLightClient(ctx sdk.Ctx, relay pc.Relay) (*pc.RelayRe
 	//	pc.GlobalServiceMetric().AddRelayFor(relay.Proof.Blockchain)
 	//}()
 
-	relayTimeStart := time.Now()
 	// get the latest session block height because this relay will correspond with the latest session
 	sessionBlockHeight := k.GetLatestSessionBlockHeight(ctx)
 
