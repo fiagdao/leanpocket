@@ -203,23 +203,32 @@ func (r *Relay) ValidateWithNodeAddress(ctx sdk.Ctx, posKeeper PosKeeper, appsKe
 
 // "Execute" - Attempts to do a request on the non-native blockchain specified
 func (r Relay) Execute(hostedBlockchains *HostedBlockchains) (string, sdk.Error) {
+
+	//var sdkErr sdk.Error
+	//var err error
+	//
+	//defer func() {
+	//	if sdkErr != nil || err != nil {
+	//		GlobalServiceMetric().AddErrorFor(r.Proof.Blockchain)
+	//	}
+	//}()
+
 	// retrieve the hosted blockchain url requested
-	chain, err := hostedBlockchains.GetChain(r.Proof.Blockchain)
-	if err != nil {
+	chain, sdkErr := hostedBlockchains.GetChain(r.Proof.Blockchain)
+	if sdkErr != nil {
 		// metric track
-		GlobalServiceMetric().AddErrorFor(r.Proof.Blockchain)
-		return "", err
+		return "", sdkErr
 	}
 	url := strings.Trim(chain.URL, `/`)
 	if len(r.Payload.Path) > 0 {
 		url = url + "/" + strings.Trim(r.Payload.Path, `/`)
 	}
 	// do basic http request on the relay
-	res, er := executeHTTPRequest(r.Payload.Data, url, GlobalPocketConfig.UserAgent, chain.BasicAuth, r.Payload.Method, r.Payload.Headers)
-	if er != nil {
+	res, err := executeHTTPRequest(r.Payload.Data, url, GlobalPocketConfig.UserAgent, chain.BasicAuth, r.Payload.Method, r.Payload.Headers)
+	if err != nil {
 		// metric track
-		GlobalServiceMetric().AddErrorFor(r.Proof.Blockchain)
-		return res, NewHTTPExecutionError(ModuleName, er)
+
+		return res, NewHTTPExecutionError(ModuleName, err)
 	}
 	return res, nil
 }

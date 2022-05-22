@@ -80,6 +80,13 @@ func (k Keeper) HandleRelay(ctx sdk.Ctx, relay pc.Relay) (*pc.RelayResponse, sdk
 }
 
 func (k Keeper) HandleRelayLightClient(ctx sdk.Ctx, relay pc.Relay) (*pc.RelayResponse, sdk.Error) {
+
+	//relayTimeStart := time.Now()
+	//defer func() {
+	//	pc.GlobalServiceMetric().AddRelayTimingFor(relay.Proof.Blockchain, float64(time.Since(relayTimeStart).Milliseconds()))
+	//	pc.GlobalServiceMetric().AddRelayFor(relay.Proof.Blockchain)
+	//}()
+
 	relayTimeStart := time.Now()
 	// get the latest session block height because this relay will correspond with the latest session
 	sessionBlockHeight := k.GetLatestSessionBlockHeight(ctx)
@@ -151,11 +158,6 @@ func (k Keeper) HandleRelayLightClient(ctx sdk.Ctx, relay pc.Relay) (*pc.RelayRe
 	}
 	// attach the signature in hex to the response
 	resp.Signature = hex.EncodeToString(sig)
-	// track the relay time
-	relayTime := time.Since(relayTimeStart)
-	// add to metrics
-	pc.GlobalServiceMetric().AddRelayTimingFor(relay.Proof.Blockchain, float64(relayTime.Milliseconds()))
-	pc.GlobalServiceMetric().AddRelayFor(relay.Proof.Blockchain)
 	return resp, nil
 }
 
