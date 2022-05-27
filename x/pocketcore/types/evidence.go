@@ -11,11 +11,11 @@ import (
 
 // "Evidence" - A proof of work/burn for nodes.
 type Evidence struct {
-	Bloom         bloom.BloomFilter        `json:"bloom_filter"` // used to check if proof contains
-	SessionHeader `json:"evidence_header"` // the session h serves as an identifier for the evidence
-	NumOfProofs   int64                    `json:"num_of_proofs"` // the total number of proofs in the evidence
-	Proofs        Proofs                   `json:"proofs"`        // a slice of Proof objects (Proof per relay or challenge)
-	EvidenceType  EvidenceType             `json:"evidence_type"`
+	Bloom         bloom.BloomFilter `json:"bloom_filter"`  // used to check if proof contains
+	SessionHeader `json:"evidence_header"`                 // the session h serves as an identifier for the evidence
+	NumOfProofs   int64             `json:"num_of_proofs"` // the total number of proofs in the evidence
+	Proofs        Proofs            `json:"proofs"`        // a slice of Proof objects (Proof per relay or challenge)
+	EvidenceType  EvidenceType      `json:"evidence_type"`
 }
 
 func (e Evidence) IsSealed() bool {
@@ -25,8 +25,22 @@ func (e Evidence) IsSealed() bool {
 	return ok
 }
 
+func (e Evidence) IsSealedWithNodeAddress(address *types.Address) bool {
+	globalEvidenceCacheMap[address.String()].l.Lock()
+	defer globalEvidenceCacheMap[address.String()].l.Unlock()
+	evidenceSealedMap := globalEvidenceSealedMapMap[address.String()]
+	_, ok := evidenceSealedMap.Load(e.HashString())
+	return ok
+}
+
 func (e Evidence) Seal() CacheObject {
 	globalEvidenceSealedMap.Store(e.HashString(), struct{}{})
+	return e
+}
+
+func (e Evidence) SealWithNodeAddress(address *types.Address) CacheObject {
+	s := globalEvidenceSealedMapMap[address.String()]
+	s.Store(e.HashString(), struct{}{})
 	return e
 }
 
@@ -34,6 +48,17 @@ func (e Evidence) Seal() CacheObject {
 func (e *Evidence) GenerateMerkleRoot(height int64) (root HashRange) {
 	// seal the evidence in cache/db
 	ev, ok := SealEvidence(*e)
+	if !ok {
+		return HashRange{}
+	}
+	// generate the root object
+	root, _ = GenerateRoot(height, ev.Proofs)
+	return
+}
+
+func (e *Evidence) GenerateMerkleRootWithNodeAddress(height int64, address *types.Address) (root HashRange) {
+	// seal the evidence in cache/db
+	ev, ok := SealEvidenceWithNodeAddress(*e, address)
 	if !ok {
 		return HashRange{}
 	}
@@ -62,11 +87,11 @@ func (e *Evidence) GenerateMerkleProof(height int64, index int) (proof MerklePro
 
 // "Evidence" - A proof of work/burn for nodes.
 type evidence struct {
-	BloomBytes    []byte                   `json:"bloom_bytes"`
-	SessionHeader `json:"evidence_header"` // the session h serves as an identifier for the evidence
-	NumOfProofs   int64                    `json:"num_of_proofs"` // the total number of proofs in the evidence
-	Proofs        []Proof                  `json:"proofs"`        // a slice of Proof objects (Proof per relay or challenge)
-	EvidenceType  EvidenceType             `json:"evidence_type"`
+	BloomBytes    []byte       `json:"bloom_bytes"`
+	SessionHeader `json:"evidence_header"`            // the session h serves as an identifier for the evidence
+	NumOfProofs   int64        `json:"num_of_proofs"` // the total number of proofs in the evidence
+	Proofs        []Proof      `json:"proofs"`        // a slice of Proof objects (Proof per relay or challenge)
+	EvidenceType  EvidenceType `json:"evidence_type"`
 }
 
 func (e Evidence) LegacyAminoMarshal() ([]byte, error) {
