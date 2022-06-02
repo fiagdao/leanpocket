@@ -9,8 +9,10 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/types"
+	"io/ioutil"
 	"math/big"
 	"net/http"
+	"path/filepath"
 	"strconv"
 
 	"github.com/julienschmidt/httprouter"
@@ -861,6 +863,12 @@ func State(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	res, err := app.PCA.ExportState(params.Height, "")
 	if err != nil {
 		WriteErrorResponse(w, 400, err.Error())
+		return
+	}
+	err = ioutil.WriteFile(filepath.Join(app.GlobalConfig.PocketConfig.DataDir, "genesis-new.json"), []byte(res), 0644)
+	if err != nil {
+		fmt.Println(err)
+		fmt.Println("Check --path, if exporting to a folder the folder must exist")
 		return
 	}
 	WriteRaw(w, res, r.URL.Path, r.Host)
