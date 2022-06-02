@@ -667,7 +667,7 @@ func NewHostedChains(generate bool) *types.HostedBlockchains {
 	// return the map
 	return &types.HostedBlockchains{
 		M: m,
-		L: sync.Mutex{},
+		L: sync.RWMutex{},
 	}
 }
 
@@ -703,7 +703,7 @@ func generateChainsJson(chainsPath string) *types.HostedBlockchains {
 		m[chain.ID] = chain
 	}
 	// return the map
-	return &types.HostedBlockchains{M: m, L: sync.Mutex{}}
+	return &types.HostedBlockchains{M: m, L: sync.RWMutex{}}
 }
 
 const (
