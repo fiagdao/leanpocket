@@ -20,7 +20,7 @@ logs/Logs
 *.idea/
 
 main
-go_build_main_go_linux
+pocket
 
 
 app/cmd/rpc/data/pocket_evidence.db

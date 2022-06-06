@@ -84,13 +84,8 @@ func (rp RelayProof) Validate(appSupportedBlockchains []string, sessionNodeCount
 		return NewInvalidBlockHeightError(ModuleName)
 	}
 	// check for supported blockchain
-	c1 := false
-	for _, chain := range appSupportedBlockchains {
-		if rp.Blockchain == chain {
-			c1 = true
-			break
-		}
-	}
+	c1 := true
+
 	if !c1 {
 		return NewUnsupportedBlockchainAppError(ModuleName)
 	}

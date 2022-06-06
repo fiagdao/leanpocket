@@ -519,19 +519,23 @@ func (app PocketCoreApp) HandleDispatchWithNodeAddress(header pocketTypes.Sessio
 	return app.pocketKeeper.HandleDispatchWithNodeAddress(ctx, header, address)
 }
 
+
 func (app PocketCoreApp) HandleRelay(r pocketTypes.Relay) (res *pocketTypes.RelayResponse, dispatch *pocketTypes.DispatchResponse, err error) {
 	ctx, err := app.NewContext(app.LastBlockHeight())
 	if err != nil {
 		return nil, nil, err
 	}
 
-	status, err := app.pocketKeeper.TmNode.Status()
-	if err != nil {
+	if !app.pocketKeeper.TmNode.IsSynced() {
 		return nil, nil, fmt.Errorf("pocket node is unable to retrieve status from tendermint node, cannot service in this state")
 	}
-	if status.SyncInfo.CatchingUp {
-		return nil, nil, fmt.Errorf("pocket node is currently syncing to the blockchain, cannot service in this state")
-	}
+	//status, err := app.pocketKeeper.TmNode.Status()
+	//if err != nil {
+	//	return nil, nil, fmt.Errorf("pocket node is unable to retrieve status from tendermint node, cannot service in this state")
+	//}
+	//if status.SyncInfo.CatchingUp {
+	//	return nil, nil, fmt.Errorf("pocket node is currently syncing to the blockchain, cannot service in this state")
+	//}
 
 	if GlobalConfig.PocketConfig.LeanPocket {
 		res, err = app.pocketKeeper.HandleRelayLightClient(ctx, r)

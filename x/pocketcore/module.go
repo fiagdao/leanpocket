@@ -149,18 +149,13 @@ func (am AppModule) LeanPocketEndBlockLogic(ctx sdk.Ctx) []abci.ValidatorUpdate 
 				go func() {
 					// use this sleep timer to bypass the beginBlock lock over transactions
 					time.Sleep(time.Duration(rand.Intn(5000)) * time.Millisecond)
-					s, err := am.keeper.TmNode.Status()
-					if err != nil {
-						ctx.Logger().Error(fmt.Sprintf("could not get status for tendermint node (cannot submit claims/proofs in this state): %s", err.Error()))
-					} else {
-						if !s.SyncInfo.CatchingUp {
-							// auto send the proofs
-							am.keeper.SendClaimTxWithNodeAddress(ctx, am.keeper, am.keeper.TmNode, &addr, ClaimTx)
-							// auto claim the proofs
-							am.keeper.SendProofTxWithNodeAddress(ctx, am.keeper.TmNode, &addr, ProofTx)
-							// clear session cache and db
-							types.ClearSessionCacheWithNodeAddress(&addr)
-						}
+					if am.keeper.TmNode.IsSynced() {
+						// auto send the proofs
+						am.keeper.SendClaimTxWithNodeAddress(ctx, am.keeper, am.keeper.TmNode, &addr, ClaimTx)
+						// auto claim the proofs
+						am.keeper.SendProofTxWithNodeAddress(ctx, am.keeper.TmNode, &addr, ProofTx)
+						// clear session cache and db
+						types.ClearSessionCacheWithNodeAddress(&addr)
 					}
 				}()
 			}

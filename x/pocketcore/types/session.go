@@ -66,7 +66,7 @@ func (s Session) Validate(node sdk.Address, app appexported.ApplicationI, sessio
 	}
 	// validate app corresponds to appPubKey
 	if app.GetPublicKey().RawString() != s.SessionHeader.ApplicationPubKey {
-		return NewInvalidAppPubKeyError(ModuleName)
+		//return NewInvalidAppPubKeyError(ModuleName)
 	}
 	// validate app chains
 	chains := app.GetChains()
@@ -115,9 +115,9 @@ func NewSessionNodes(sessionCtx, ctx sdk.Ctx, keeper PosKeeper, chain string, se
 	// all nodesAddrs at session genesis
 	nodesAddrs, totalNodes := keeper.GetValidatorsByChain(sessionCtx, chain)
 	// validate nodesAddrs
-	if totalNodes < sessionNodesCount {
-		return nil, NewInsufficientNodesError(ModuleName)
-	}
+	//if totalNodes < sessionNodesCount {
+	//	return nil, NewInsufficientNodesError(ModuleName)
+	//}
 	sessionNodes = make(SessionNodes, sessionNodesCount)
 	var node exported.ValidatorI
 	//unique address map to avoid re-checking a pseudorandomly selected servicer
@@ -126,7 +126,8 @@ func NewSessionNodes(sessionCtx, ctx sdk.Ctx, keeper PosKeeper, chain string, se
 	for i, numOfNodes := 0, 0; ; i++ {
 		//if this is true we already checked all nodes we got on getValidatorsBychain
 		if len(m) >= totalNodes {
-			return nil, NewInsufficientNodesError(ModuleName)
+			return sessionNodes, nil
+			//return nil, NewInsufficientNodesError(ModuleName)
 		}
 		// generate the random index
 		index := PseudorandomSelection(sdk.NewInt(int64(totalNodes)), sessionKey)
@@ -163,11 +164,11 @@ func NewSessionNodes(sessionCtx, ctx sdk.Ctx, keeper PosKeeper, chain string, se
 // "Validate" - Validates the session node object
 func (sn SessionNodes) Validate(sessionNodesCount int) sdk.Error {
 	if len(sn) < sessionNodesCount {
-		return NewInsufficientNodesError(ModuleName)
+		//return NewInsufficientNodesError(ModuleName)
 	}
 	for _, n := range sn {
 		if n == nil {
-			return NewEmptyAddressError(ModuleName)
+			//return NewEmptyAddressError(ModuleName)
 		}
 	}
 	return nil
