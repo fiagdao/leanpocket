@@ -3,6 +3,7 @@ package keeper
 import (
 	"encoding/hex"
 	"fmt"
+	"time"
 
 	"github.com/pokt-network/pocket-core/crypto"
 	sdk "github.com/pokt-network/pocket-core/types"
@@ -20,6 +21,7 @@ func (k Keeper) SendClaimTx(ctx sdk.Ctx, keeper Keeper, n client.Client, claimTx
 		ctx.Logger().Error(fmt.Sprintf("an error occured retrieving the private key from file for the claim transaction:\n%s", err.Error()))
 		return
 	}
+	now := time.Now()
 	// retrieve the iterator to go through each piece of evidence in storage
 	iter := pc.EvidenceIterator()
 	defer iter.Close()
@@ -71,6 +73,11 @@ func (k Keeper) SendClaimTx(ctx sdk.Ctx, keeper Keeper, n client.Client, claimTx
 		}
 		// generate the merkle root for this evidence
 		root := evidence.GenerateMerkleRoot(evidence.SessionHeader.SessionBlockHeight)
+		claimTxTotalTime := float64(time.Since(now).Milliseconds())
+		go func() {
+			addr := sdk.Address(kp.PublicKey().Address())
+			pc.GlobalServiceMetric().AddClaimTiming(evidence.SessionHeader.Chain, claimTxTotalTime, &addr)
+		}()
 		// generate the auto txbuilder and clictx
 		txBuilder, cliCtx, err := newTxBuilderAndCliCtx(ctx, &pc.MsgClaim{}, n, kp, k)
 		if err != nil {
@@ -86,13 +93,17 @@ func (k Keeper) SendClaimTx(ctx sdk.Ctx, keeper Keeper, n client.Client, claimTx
 
 func (k Keeper) SendClaimTxWithNodeAddress(ctx sdk.Ctx, keeper Keeper, n client.Client, address *sdk.Address, claimTx func(pk crypto.PrivateKey, cliCtx util.CLIContext, txBuilder auth.TxBuilder, header pc.SessionHeader, totalProofs int64, root pc.HashRange, evidenceType pc.EvidenceType) (*sdk.TxResponse, error)) {
 	// get the private val key (main) account from the keybase
-	kp, err := pc.GetLightNodePkWithNodeAddress(address)
+	node, err := pc.GetNodeLean(address)
+
 	if err != nil {
 		ctx.Logger().Error(fmt.Sprintf("an error occured retrieving the private key from file for the claim transaction:\n%s", err.Error()))
 		return
 	}
 
+	kp := node.PrivateKey
+
 	// retrieve the iterator to go through each piece of evidence in storage
+	now := time.Now()
 	iter := pc.EvidenceIteratorWithNodeAddress(address)
 	defer iter.Close()
 	// loop through each evidence
@@ -142,8 +153,13 @@ func (k Keeper) SendClaimTxWithNodeAddress(ctx sdk.Ctx, keeper Keeper, n client.
 			continue
 		}
 		// generate the merkle root for this evidence
-		root := evidence.GenerateMerkleRootWithNodeAddress(evidence.SessionHeader.SessionBlockHeight, address)
+		root := evidence.GenerateMerkleRootLean(evidence.SessionHeader.SessionBlockHeight, address)
 		// generate the auto txbuilder and clictx
+		claimTxTotalTime := float64(time.Since(now).Milliseconds())
+		go func() {
+			addr := sdk.Address(kp.PublicKey().Address())
+			pc.GlobalServiceMetric().AddClaimTiming(evidence.SessionHeader.Chain, claimTxTotalTime, &addr)
+		}()
 		txBuilder, cliCtx, err := newTxBuilderAndCliCtx(ctx, &pc.MsgClaim{}, n, kp, k)
 		if err != nil {
 			ctx.Logger().Error(fmt.Sprintf("an error occured creating the tx builder for the claim tx:\n%s", err.Error()))
