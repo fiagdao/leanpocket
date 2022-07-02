@@ -2,11 +2,10 @@ package types
 
 import (
 	"fmt"
-	"strings"
-
 	"github.com/pokt-network/pocket-core/codec"
 	"github.com/pokt-network/pocket-core/types"
 	"github.com/willf/bloom"
+	"strings"
 )
 
 // "Evidence" - A proof of work/burn for nodes.
@@ -18,48 +17,14 @@ type Evidence struct {
 	EvidenceType  EvidenceType             `json:"evidence_type"`
 }
 
-func (e Evidence) IsSealed() bool {
-	globalEvidenceCache.l.Lock()
-	defer globalEvidenceCache.l.Unlock()
-	_, ok := globalEvidenceSealedMap.Load(e.HashString())
-	return ok
-}
-
-func (e Evidence) IsSealedLean(address *types.Address) bool {
-	addr := address.String()
-	leanNode := GlobalNodesLean[addr]
-	leanNode.EvidenceCache.l.Lock()
-	defer leanNode.EvidenceCache.l.Unlock()
-	_, ok := leanNode.EvidenceSealedMap.Load(e.HashString())
-	return ok
-}
-
-func (e Evidence) Seal() CacheObject {
-	globalEvidenceSealedMap.Store(e.HashString(), struct{}{})
-	return e
-}
-
-func (e Evidence) SealLean(address *types.Address) CacheObject {
-	node := GlobalNodesLean[address.String()]
-	node.EvidenceSealedMap.Store(e.HashString(), struct{}{})
-	return e
+func (e Evidence) IsSealable() bool {
+	return true
 }
 
 // "GenerateMerkleRoot" - Generates the merkle root for an GOBEvidence object
-func (e *Evidence) GenerateMerkleRoot(height int64) (root HashRange) {
+func (e *Evidence) GenerateMerkleRoot(height int64, storage *CacheStorage) (root HashRange) {
 	// seal the evidence in cache/db
-	ev, ok := SealEvidence(*e)
-	if !ok {
-		return HashRange{}
-	}
-	// generate the root object
-	root, _ = GenerateRoot(height, ev.Proofs)
-	return
-}
-
-func (e *Evidence) GenerateMerkleRootLean(height int64, address *types.Address) (root HashRange) {
-	// seal the evidence in cache/db
-	ev, ok := SealEvidenceLean(*e, address)
+	ev, ok := SealEvidence(*e, storage)
 	if !ok {
 		return HashRange{}
 	}
