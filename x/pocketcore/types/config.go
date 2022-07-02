@@ -3,10 +3,10 @@ package types
 import (
 	"encoding/hex"
 	"fmt"
-	types "github.com/pokt-network/pocket-core/types"
+	"github.com/pokt-network/pocket-core/crypto"
+	"github.com/pokt-network/pocket-core/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
-	"sync"
 	"time"
 )
 
@@ -23,13 +23,8 @@ var (
 )
 
 func InitConfig(chains *HostedBlockchains, logger log.Logger, c types.Config) {
-	cacheOnce.Do(func() {
-		globalEvidenceCache = new(CacheStorage)
-		globalSessionCache = new(CacheStorage)
-		globalEvidenceSealedMap = sync.Map{}
-		globalEvidenceCache.Init(c.PocketConfig.DataDir, c.PocketConfig.EvidenceDBName, c.TendermintConfig.LevelDBOptions, c.PocketConfig.MaxEvidenceCacheEntires, false)
-		globalSessionCache.Init(c.PocketConfig.DataDir, "", c.TendermintConfig.LevelDBOptions, c.PocketConfig.MaxSessionCacheEntries, true)
-
+	configOnce.Do(func() {
+		InitPocketNodeCaches(c, logger)
 		InitGlobalServiceMetric(chains, logger, c.PocketConfig.PrometheusAddr, c.PocketConfig.PrometheusMaxOpenfiles)
 	})
 	GlobalPocketConfig = c.PocketConfig
@@ -43,8 +38,13 @@ func InitConfig(chains *HostedBlockchains, logger log.Logger, c types.Config) {
 }
 
 func ConvertEvidenceToProto(config types.Config) error {
+	// we have to add a random pocket node so that way lean pokt can still support getting the legacy evidence cache
+	node := AddPocketNode(crypto.GenerateEd25519PrivKey().GenPrivateKey(), log.NewNopLogger())
+
 	InitConfig(nil, log.NewNopLogger(), config)
-	gec := globalEvidenceCache
+
+
+	gec := node.EvidenceStore
 	it, err := gec.Iterator()
 	if err != nil {
 		return fmt.Errorf("error creating evidence iterator: %s", err.Error())
@@ -68,28 +68,16 @@ func ConvertEvidenceToProto(config types.Config) error {
 	return nil
 }
 
-// NOTE: evidence cache is flushed every time db iterator is created (every claim/proof submission)
 func FlushSessionCache() {
-	err := globalSessionCache.FlushToDB()
-	if err != nil {
-		fmt.Printf("unable to flush sessions to the database before shutdown!! %s\n", err.Error())
-	}
-	err = globalEvidenceCache.FlushToDB()
-	if err != nil {
-		fmt.Printf("unable to flush GOBEvidence to the database before shutdown!! %s\n", err.Error())
-	}
-}
-
-func FlushSessionCacheLean() {
-	if GlobalNodesLean == nil {
+	if GlobalPocketNodes == nil {
 		return
 	}
-	for _, k := range GlobalNodesLean {
-		err := k.SessionCache.FlushToDB()
+	for _, k := range GlobalPocketNodes {
+		err := k.SessionStore.FlushToDB()
 		if err != nil {
 			fmt.Printf("unable to flush sessions to the database before shutdown!! %s\n", err.Error())
 		}
-		err = k.EvidenceCache.FlushToDB()
+		err = k.EvidenceStore.FlushToDB()
 		if err != nil {
 			fmt.Printf("unable to flush GOBEvidence to the database before shutdown!! %s\n", err.Error())
 		}

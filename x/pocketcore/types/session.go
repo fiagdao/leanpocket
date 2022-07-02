@@ -16,18 +16,16 @@ func (s Session) IsSealed() bool {
 	return false
 }
 
+func (s Session) IsSealable() bool {
+	return false
+}
+
 func (s Session) Seal() CacheObject {
 	return s
 }
 
-// ????????? ????
-func (s Session) IsSealedLean(address *sdk.Address) bool {
-	return false
-}
-
-// ??? ??????????????????????????????
-func (s Session) SealLean(address *sdk.Address) CacheObject {
-	return s
+func (s Session) HashString() string {
+	return s.HashString()
 }
 
 // "NewSession" - create a new session from seed data

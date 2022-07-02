@@ -98,27 +98,18 @@ func handleProofMsg(ctx sdk.Ctx, k keeper.Keeper, proof types.MsgProof) sdk.Resu
 }
 
 func processSelf(ctx sdk.Ctx, k keeper.Keeper, signer sdk.Address, header types.SessionHeader, evidenceType types.EvidenceType, tokens sdk.BigInt) {
-	// delete local evidence
-	if types.GlobalPocketConfig.LeanPocket {
-		_, ok := types.GlobalNodesLean[signer.String()]
-		if ok {
-			err := types.DeleteEvidenceLean(header, evidenceType, &signer)
-			if err != nil {
-				ctx.Logger().Error("Unable to delete evidence: " + err.Error())
-			}
-			if !tokens.IsZero() {
-				types.GlobalServiceMetric().AddUPOKTEarnedFor(header.Chain, float64(tokens.Int64()), &signer)
-			}
-		}
-	} else {
-		if signer.Equals(k.GetSelfAddress(ctx)) {
-			err := types.DeleteEvidence(header, evidenceType)
-			if err != nil {
-				ctx.Logger().Error("Unable to delete evidence: " + err.Error())
-			}
-			if !tokens.IsZero() {
-				types.GlobalServiceMetric().AddUPOKTEarnedFor(header.Chain, float64(tokens.Int64()), &signer)
-			}
-		}
+	node, ok := types.GlobalPocketNodes[signer.String()]
+	if !ok {
+		ctx.Logger().Error("Failed to find lean node for: " + signer.String())
+		return
 	}
+	evidenceStore := node.EvidenceStore
+	err := types.DeleteEvidence(header, evidenceType, evidenceStore)
+	if err != nil {
+		ctx.Logger().Error("Unable to delete evidence: " + err.Error())
+	}
+	if !tokens.IsZero() {
+		types.GlobalServiceMetric().AddUPOKTEarnedFor(header.Chain, float64(tokens.Int64()), &signer)
+	}
+
 }

@@ -113,7 +113,7 @@ func (sm *ServiceMetrics) AddRelayFor(networkID string, nodeAddress *sdk.Address
 	sm.NonNativeChains[networkID] = nnc
 }
 
-func (sm *ServiceMetrics) AddChallengeFor(networkID string) {
+func (sm *ServiceMetrics) AddChallengeFor(networkID string, nodeAddress *sdk.Address) {
 	sm.l.Lock()
 	defer sm.l.Unlock()
 	// attempt to locate nn chain
@@ -123,10 +123,11 @@ func (sm *ServiceMetrics) AddChallengeFor(networkID string) {
 		sm.NonNativeChains[networkID] = NewServiceMetricsFor(networkID)
 		return
 	}
+	labels := sm.getValidatorLabel(nodeAddress)
 	// add to accumulated count
-	sm.ChallengeCount.Add(1)
+	sm.ChallengeCount.With(labels...).Add(1)
 	// add to individual count
-	nnc.ChallengeCount.Add(1)
+	nnc.ChallengeCount.With(labels...).Add(1)
 	// update nnc
 	sm.NonNativeChains[networkID] = nnc
 }
@@ -221,16 +222,16 @@ func (sm *ServiceMetrics) AddSessionFor(networkID string, nodeAddress *sdk.Addre
 		return
 	}
 
-	if nodeAddress == nil {
-		// this implies that user is not running in lean pocket
-		privKey, err := GetPVKeyFile()
-		if err != nil {
-			sm.tmLogger.Error("unable to load privateKey", networkID)
-			return
-		}
-		addr := sdk.Address(privKey.Address)
-		nodeAddress = &addr
-	}
+	//if nodeAddress == nil {
+	//	// this implies that user is not running in lean pocket
+	//	privKey, err := GetPVKeyFile()
+	//	if err != nil {
+	//		sm.tmLogger.Error("unable to load privateKey", networkID)
+	//		return
+	//	}
+	//	addr := sdk.Address(privKey.Address)
+	//	nodeAddress = &addr
+	//}
 	labels := sm.getValidatorLabel(nodeAddress)
 
 	// add to accumulated count
