@@ -21,7 +21,7 @@ type PocketNode struct {
 	PrivateKey      crypto.PrivateKey
 	EvidenceStore   *CacheStorage
 	SessionStore    *CacheStorage
-	DoCacheInitOnce *sync.Once
+	DoCacheInitOnce sync.Once
 }
 
 func AddPocketNode(pk crypto.PrivateKey, logger log.Logger) *PocketNode {
@@ -32,7 +32,6 @@ func AddPocketNode(pk crypto.PrivateKey, logger log.Logger) *PocketNode {
 	}
 	node = &PocketNode{
 		PrivateKey:      pk,
-		DoCacheInitOnce: &sync.Once{},
 	}
 	GlobalPocketNodes[key] = node
 	return node
@@ -53,8 +52,10 @@ func InitPocketNodeCache(node *PocketNode, c types.Config, logger log.Logger) {
 		if c.PocketConfig.LeanPocket {
 			evidenceDbName = evidenceDbName + "_" + sdk.GetAddress(node.PrivateKey.PublicKey()).String()
 		}
-		node.EvidenceStore.Init(c.PocketConfig.DataDir, evidenceDbName, GlobalTenderMintConfig.LevelDBOptions, GlobalPocketConfig.MaxEvidenceCacheEntires, false)
-		node.SessionStore.Init(GlobalPocketConfig.DataDir, "", GlobalTenderMintConfig.LevelDBOptions, GlobalPocketConfig.MaxSessionCacheEntries, true)
+		node.EvidenceStore = new(CacheStorage)
+		node.SessionStore = new(CacheStorage)
+		node.EvidenceStore.Init(c.PocketConfig.DataDir, evidenceDbName, c.TendermintConfig.LevelDBOptions, c.PocketConfig.MaxEvidenceCacheEntires, false)
+		node.SessionStore.Init(c.PocketConfig.DataDir, "", c.TendermintConfig.LevelDBOptions, c.PocketConfig.MaxSessionCacheEntries, true)
 
 		if GlobalSessionCache == nil {
 			GlobalSessionCache = node.SessionStore

@@ -222,16 +222,16 @@ func (sm *ServiceMetrics) AddSessionFor(networkID string, nodeAddress *sdk.Addre
 		return
 	}
 
-	//if nodeAddress == nil {
-	//	// this implies that user is not running in lean pocket
-	//	privKey, err := GetPVKeyFile()
-	//	if err != nil {
-	//		sm.tmLogger.Error("unable to load privateKey", networkID)
-	//		return
-	//	}
-	//	addr := sdk.Address(privKey.Address)
-	//	nodeAddress = &addr
-	//}
+	if nodeAddress == nil {
+		// this implies that user is not running in lean pocket
+		node := GetPocketNode()
+		if node != nil {
+			sm.tmLogger.Error("unable to load privateKey", networkID)
+			return
+		}
+		addr := sdk.GetAddress(node.PrivateKey.PublicKey())
+		nodeAddress = &addr
+	}
 	labels := sm.getValidatorLabel(nodeAddress)
 
 	// add to accumulated count
