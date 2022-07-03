@@ -10,6 +10,9 @@ import (
 	"sync"
 )
 
+var GlobalEvidenceCache *CacheStorage
+var GlobalSessionCache *CacheStorage
+
 var GlobalPocketNodes = map[string]*PocketNode{}
 var GlobalPocketNodesRWLock = sync.RWMutex{}
 
@@ -52,6 +55,11 @@ func InitPocketNodeCache(node *PocketNode, c types.Config, logger log.Logger) {
 		}
 		node.EvidenceStore.Init(c.PocketConfig.DataDir, evidenceDbName, GlobalTenderMintConfig.LevelDBOptions, GlobalPocketConfig.MaxEvidenceCacheEntires, false)
 		node.SessionStore.Init(GlobalPocketConfig.DataDir, "", GlobalTenderMintConfig.LevelDBOptions, GlobalPocketConfig.MaxSessionCacheEntries, true)
+
+		if GlobalSessionCache == nil {
+			GlobalSessionCache = node.SessionStore
+			GlobalEvidenceCache = node.EvidenceStore
+		}
 	})
 }
 

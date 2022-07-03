@@ -10,8 +10,6 @@ import (
 	"testing"
 )
 
-var sessionCache, evidenceCache *CacheStorage
-
 func InitCacheTest() {
 	logger := log.NewNopLogger()
 	testingConfig := sdk.DefaultTestingPocketConfig()
@@ -19,9 +17,6 @@ func InitCacheTest() {
 	InitConfig(&HostedBlockchains{
 		M: make(map[string]HostedBlockchain),
 	}, logger, testingConfig)
-	testNode := GetPocketNode()
-	sessionCache = testNode.SessionStore
-	evidenceCache = testNode.EvidenceStore
 }
 
 func TestMain(m *testing.M) {
@@ -40,7 +35,7 @@ func TestIsUniqueProof(t *testing.T) {
 		Chain:              "0001",
 		SessionBlockHeight: 0,
 	}
-	e, _ := GetEvidence(h, RelayEvidence, sdk.NewInt(100000), evidenceCache)
+	e, _ := GetEvidence(h, RelayEvidence, sdk.NewInt(100000), GlobalEvidenceCache)
 	p := RelayProof{
 		Entropy: 1,
 	}
@@ -49,8 +44,8 @@ func TestIsUniqueProof(t *testing.T) {
 	}
 	assert.True(t, IsUniqueProof(p, e), "p is unique")
 	e.AddProof(p)
-	SetEvidence(e, evidenceCache)
-	e, err := GetEvidence(h, RelayEvidence, sdk.ZeroInt(), evidenceCache)
+	SetEvidence(e, GlobalEvidenceCache)
+	e, err := GetEvidence(h, RelayEvidence, sdk.ZeroInt(), GlobalEvidenceCache)
 	assert.Nil(t, err)
 	assert.False(t, IsUniqueProof(p, e), "p is no longer unique")
 	assert.True(t, IsUniqueProof(p1, e), "p is unique")
@@ -80,8 +75,8 @@ func TestAllEvidence_AddGetEvidence(t *testing.T) {
 		},
 		Signature: "",
 	}
-	SetProof(header, RelayEvidence, proof, sdk.NewInt(100000), evidenceCache)
-	assert.True(t, reflect.DeepEqual(GetProof(header, RelayEvidence, 0, evidenceCache), proof))
+	SetProof(header, RelayEvidence, proof, sdk.NewInt(100000), GlobalEvidenceCache)
+	assert.True(t, reflect.DeepEqual(GetProof(header, RelayEvidence, 0, GlobalEvidenceCache), proof))
 }
 
 
@@ -109,11 +104,11 @@ func TestAllEvidence_DeleteEvidence(t *testing.T) {
 		},
 		Signature: "",
 	}
-	SetProof(header, RelayEvidence, proof, sdk.NewInt(100000), evidenceCache)
-	assert.True(t, reflect.DeepEqual(GetProof(header, RelayEvidence, 0, evidenceCache), proof))
-	GetProof(header, RelayEvidence, 0, evidenceCache)
-	_ = DeleteEvidence(header, RelayEvidence, evidenceCache)
-	assert.Empty(t, GetProof(header, RelayEvidence, 0, evidenceCache))
+	SetProof(header, RelayEvidence, proof, sdk.NewInt(100000), GlobalEvidenceCache)
+	assert.True(t, reflect.DeepEqual(GetProof(header, RelayEvidence, 0, GlobalEvidenceCache), proof))
+	GetProof(header, RelayEvidence, 0, GlobalEvidenceCache)
+	_ = DeleteEvidence(header, RelayEvidence, GlobalEvidenceCache)
+	assert.Empty(t, GetProof(header, RelayEvidence, 0, GlobalEvidenceCache))
 }
 
 
@@ -160,24 +155,24 @@ func TestAllEvidence_GetTotalProofs(t *testing.T) {
 		},
 		Signature: "",
 	}
-	SetProof(header, RelayEvidence, proof, sdk.NewInt(100000), evidenceCache)
-	SetProof(header, RelayEvidence, proof2, sdk.NewInt(100000), evidenceCache)
-	SetProof(header2, RelayEvidence, proof2, sdk.NewInt(100000), evidenceCache) // different header so shouldn't be counted
-	_, totalRelays := GetTotalProofs(header, RelayEvidence, sdk.NewInt(100000), evidenceCache)
+	SetProof(header, RelayEvidence, proof, sdk.NewInt(100000), GlobalEvidenceCache)
+	SetProof(header, RelayEvidence, proof2, sdk.NewInt(100000), GlobalEvidenceCache)
+	SetProof(header2, RelayEvidence, proof2, sdk.NewInt(100000), GlobalEvidenceCache) // different header so shouldn't be counted
+	_, totalRelays := GetTotalProofs(header, RelayEvidence, sdk.NewInt(100000), GlobalEvidenceCache)
 	assert.Equal(t, totalRelays, int64(2))
 }
 
 func TestSetGetSession(t *testing.T) {
 	session := NewTestSession(t, hex.EncodeToString(Hash([]byte("foo"))))
 	session2 := NewTestSession(t, hex.EncodeToString(Hash([]byte("bar"))))
-	SetSession(session, sessionCache)
-	s, found := GetSession(session.SessionHeader, sessionCache)
+	SetSession(session, GlobalSessionCache)
+	s, found := GetSession(session.SessionHeader, GlobalSessionCache)
 	assert.True(t, found)
 	assert.Equal(t, s, session)
-	_, found = GetSession(session2.SessionHeader, sessionCache)
+	_, found = GetSession(session2.SessionHeader, GlobalSessionCache)
 	assert.False(t, found)
-	SetSession(session2, sessionCache)
-	s, found = GetSession(session2.SessionHeader, sessionCache)
+	SetSession(session2, GlobalSessionCache)
+	s, found = GetSession(session2.SessionHeader, GlobalSessionCache)
 	assert.True(t, found)
 	assert.Equal(t, s, session2)
 }
@@ -186,18 +181,18 @@ func TestSetGetSession(t *testing.T) {
 
 func TestDeleteSession(t *testing.T) {
 	session := NewTestSession(t, hex.EncodeToString(Hash([]byte("foo"))))
-	SetSession(session, sessionCache)
-	DeleteSession(session.SessionHeader, sessionCache)
-	_, found := GetSession(session.SessionHeader, sessionCache)
+	SetSession(session, GlobalSessionCache)
+	DeleteSession(session.SessionHeader, GlobalSessionCache)
+	_, found := GetSession(session.SessionHeader, GlobalSessionCache)
 	assert.False(t, found)
 }
 
 
 func TestClearCache(t *testing.T) {
 	session := NewTestSession(t, hex.EncodeToString(Hash([]byte("foo"))))
-	SetSession(session, sessionCache)
-	ClearSessionCache(sessionCache)
-	iter := SessionIterator(sessionCache)
+	SetSession(session, GlobalSessionCache)
+	ClearSessionCache(GlobalSessionCache)
+	iter := SessionIterator(GlobalSessionCache)
 	var count = 0
 	defer iter.Close()
 	for ; iter.Valid(); iter.Next() {

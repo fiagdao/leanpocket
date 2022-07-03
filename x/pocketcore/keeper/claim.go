@@ -142,9 +142,7 @@ func (k Keeper) ValidateClaim(ctx sdk.Ctx, claim pc.MsgClaim) (err sdk.Error) {
 	// get the session node count for the time of the session
 	sessionNodeCount := int(k.SessionNodeCount(sessionContext))
 	// check cache
-
-	pocketNode := pc.GetPocketNode()
-	session, found := pc.GetSession(claim.SessionHeader, pocketNode.SessionStore)
+	session, found := pc.GetSession(claim.SessionHeader, pc.GlobalSessionCache)
 	if !found {
 		// use the session end context to ensure that people who were jailed mid session do not get to submit claims
 		sessionEndCtx, er := ctx.PrevCtx(sessionEndHeight)
