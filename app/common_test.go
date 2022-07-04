@@ -89,9 +89,8 @@ func NewInMemoryTendermintNodeAmino(t *testing.T, genesisState []byte) (tendermi
 		if err != nil {
 			panic(err)
 		}
-		node := pocketTypes.GetPocketNode()
-		pocketTypes.ClearEvidence(node.EvidenceStore)
-		pocketTypes.ClearSessionCache(node.SessionStore)
+		pocketTypes.ClearEvidence(pocketTypes.GlobalEvidenceCacheLegacy)
+		pocketTypes.ClearSessionCache(pocketTypes.GlobalSessionCacheLegacy)
 		PCA = nil
 		inMemKB = nil
 		err := inMemDB.Close()

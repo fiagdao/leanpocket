@@ -35,7 +35,7 @@ func TestIsUniqueProof(t *testing.T) {
 		Chain:              "0001",
 		SessionBlockHeight: 0,
 	}
-	e, _ := GetEvidence(h, RelayEvidence, sdk.NewInt(100000), GlobalEvidenceCache)
+	e, _ := GetEvidence(h, RelayEvidence, sdk.NewInt(100000), GlobalEvidenceCacheLegacy)
 	p := RelayProof{
 		Entropy: 1,
 	}
@@ -44,8 +44,8 @@ func TestIsUniqueProof(t *testing.T) {
 	}
 	assert.True(t, IsUniqueProof(p, e), "p is unique")
 	e.AddProof(p)
-	SetEvidence(e, GlobalEvidenceCache)
-	e, err := GetEvidence(h, RelayEvidence, sdk.ZeroInt(), GlobalEvidenceCache)
+	SetEvidence(e, GlobalEvidenceCacheLegacy)
+	e, err := GetEvidence(h, RelayEvidence, sdk.ZeroInt(), GlobalEvidenceCacheLegacy)
 	assert.Nil(t, err)
 	assert.False(t, IsUniqueProof(p, e), "p is no longer unique")
 	assert.True(t, IsUniqueProof(p1, e), "p is unique")
@@ -75,10 +75,9 @@ func TestAllEvidence_AddGetEvidence(t *testing.T) {
 		},
 		Signature: "",
 	}
-	SetProof(header, RelayEvidence, proof, sdk.NewInt(100000), GlobalEvidenceCache)
-	assert.True(t, reflect.DeepEqual(GetProof(header, RelayEvidence, 0, GlobalEvidenceCache), proof))
+	SetProof(header, RelayEvidence, proof, sdk.NewInt(100000), GlobalEvidenceCacheLegacy)
+	assert.True(t, reflect.DeepEqual(GetProof(header, RelayEvidence, 0, GlobalEvidenceCacheLegacy), proof))
 }
-
 
 func TestAllEvidence_DeleteEvidence(t *testing.T) {
 	appPubKey := getRandomPubKey().RawString()
@@ -104,13 +103,12 @@ func TestAllEvidence_DeleteEvidence(t *testing.T) {
 		},
 		Signature: "",
 	}
-	SetProof(header, RelayEvidence, proof, sdk.NewInt(100000), GlobalEvidenceCache)
-	assert.True(t, reflect.DeepEqual(GetProof(header, RelayEvidence, 0, GlobalEvidenceCache), proof))
-	GetProof(header, RelayEvidence, 0, GlobalEvidenceCache)
-	_ = DeleteEvidence(header, RelayEvidence, GlobalEvidenceCache)
-	assert.Empty(t, GetProof(header, RelayEvidence, 0, GlobalEvidenceCache))
+	SetProof(header, RelayEvidence, proof, sdk.NewInt(100000), GlobalEvidenceCacheLegacy)
+	assert.True(t, reflect.DeepEqual(GetProof(header, RelayEvidence, 0, GlobalEvidenceCacheLegacy), proof))
+	GetProof(header, RelayEvidence, 0, GlobalEvidenceCacheLegacy)
+	_ = DeleteEvidence(header, RelayEvidence, GlobalEvidenceCacheLegacy)
+	assert.Empty(t, GetProof(header, RelayEvidence, 0, GlobalEvidenceCacheLegacy))
 }
-
 
 func TestAllEvidence_GetTotalProofs(t *testing.T) {
 	appPubKey := getRandomPubKey().RawString()
@@ -155,44 +153,41 @@ func TestAllEvidence_GetTotalProofs(t *testing.T) {
 		},
 		Signature: "",
 	}
-	SetProof(header, RelayEvidence, proof, sdk.NewInt(100000), GlobalEvidenceCache)
-	SetProof(header, RelayEvidence, proof2, sdk.NewInt(100000), GlobalEvidenceCache)
-	SetProof(header2, RelayEvidence, proof2, sdk.NewInt(100000), GlobalEvidenceCache) // different header so shouldn't be counted
-	_, totalRelays := GetTotalProofs(header, RelayEvidence, sdk.NewInt(100000), GlobalEvidenceCache)
+	SetProof(header, RelayEvidence, proof, sdk.NewInt(100000), GlobalEvidenceCacheLegacy)
+	SetProof(header, RelayEvidence, proof2, sdk.NewInt(100000), GlobalEvidenceCacheLegacy)
+	SetProof(header2, RelayEvidence, proof2, sdk.NewInt(100000), GlobalEvidenceCacheLegacy) // different header so shouldn't be counted
+	_, totalRelays := GetTotalProofs(header, RelayEvidence, sdk.NewInt(100000), GlobalEvidenceCacheLegacy)
 	assert.Equal(t, totalRelays, int64(2))
 }
 
 func TestSetGetSession(t *testing.T) {
 	session := NewTestSession(t, hex.EncodeToString(Hash([]byte("foo"))))
 	session2 := NewTestSession(t, hex.EncodeToString(Hash([]byte("bar"))))
-	SetSession(session, GlobalSessionCache)
-	s, found := GetSession(session.SessionHeader, GlobalSessionCache)
+	SetSession(session, GlobalSessionCacheLegacy)
+	s, found := GetSession(session.SessionHeader, GlobalSessionCacheLegacy)
 	assert.True(t, found)
 	assert.Equal(t, s, session)
-	_, found = GetSession(session2.SessionHeader, GlobalSessionCache)
+	_, found = GetSession(session2.SessionHeader, GlobalSessionCacheLegacy)
 	assert.False(t, found)
-	SetSession(session2, GlobalSessionCache)
-	s, found = GetSession(session2.SessionHeader, GlobalSessionCache)
+	SetSession(session2, GlobalSessionCacheLegacy)
+	s, found = GetSession(session2.SessionHeader, GlobalSessionCacheLegacy)
 	assert.True(t, found)
 	assert.Equal(t, s, session2)
 }
 
-
-
 func TestDeleteSession(t *testing.T) {
 	session := NewTestSession(t, hex.EncodeToString(Hash([]byte("foo"))))
-	SetSession(session, GlobalSessionCache)
-	DeleteSession(session.SessionHeader, GlobalSessionCache)
-	_, found := GetSession(session.SessionHeader, GlobalSessionCache)
+	SetSession(session, GlobalSessionCacheLegacy)
+	DeleteSession(session.SessionHeader, GlobalSessionCacheLegacy)
+	_, found := GetSession(session.SessionHeader, GlobalSessionCacheLegacy)
 	assert.False(t, found)
 }
 
-
 func TestClearCache(t *testing.T) {
 	session := NewTestSession(t, hex.EncodeToString(Hash([]byte("foo"))))
-	SetSession(session, GlobalSessionCache)
-	ClearSessionCache(GlobalSessionCache)
-	iter := SessionIterator(GlobalSessionCache)
+	SetSession(session, GlobalSessionCacheLegacy)
+	ClearSessionCache(GlobalSessionCacheLegacy)
+	iter := SessionIterator(GlobalSessionCacheLegacy)
 	var count = 0
 	defer iter.Close()
 	for ; iter.Valid(); iter.Next() {
@@ -200,8 +195,6 @@ func TestClearCache(t *testing.T) {
 	}
 	assert.Zero(t, count)
 }
-
-
 
 func NewTestSession(t *testing.T, chain string) Session {
 	appPubKey := getRandomPubKey()

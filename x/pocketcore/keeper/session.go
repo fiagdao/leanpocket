@@ -24,7 +24,7 @@ func (k Keeper) HandleDispatch(ctx sdk.Ctx, header types.SessionHeader) (*types.
 		return nil, sdk.ErrInternal(er.Error())
 	}
 	// check cache
-	session, found := types.GetSession(header, types.GlobalSessionCache)
+	session, found := types.GetSession(header, types.GlobalSessionCacheLegacy)
 	// if not found generate the session
 	if !found {
 		var err sdk.Error
@@ -37,7 +37,7 @@ func (k Keeper) HandleDispatch(ctx sdk.Ctx, header types.SessionHeader) (*types.
 			return nil, err
 		}
 		// add to cache
-		types.SetSession(session, types.GlobalSessionCache)
+		types.SetSession(session, types.GlobalSessionCacheLegacy)
 	}
 	actualNodes := make([]exported.ValidatorI, len(session.SessionNodes))
 	for i, addr := range session.SessionNodes {
@@ -49,7 +49,6 @@ func (k Keeper) HandleDispatch(ctx sdk.Ctx, header types.SessionHeader) (*types.
 		SessionNodes:  actualNodes,
 	}, BlockHeight: ctx.BlockHeight()}, nil
 }
-
 
 // "IsSessionBlock" - Returns true if current block, is a session block (beginning of a session)
 func (k Keeper) IsSessionBlock(ctx sdk.Ctx) bool {
@@ -86,5 +85,5 @@ func (k Keeper) IsPocketSupportedBlockchain(ctx sdk.Ctx, chain string) bool {
 }
 
 func (Keeper) ClearSessionCache() {
-	types.ClearSessionCache(types.GlobalSessionCache)
+	types.ClearSessionCache(types.GlobalSessionCacheLegacy)
 }

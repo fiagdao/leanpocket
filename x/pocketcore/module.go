@@ -101,32 +101,28 @@ func (am AppModule) EndBlock(ctx sdk.Ctx, _ abci.RequestEndBlock) []abci.Validat
 	// get blocks per session
 	blocksPerSession := am.keeper.BlocksPerSession(ctx)
 	// get self address
-	if types.GlobalPocketNodes != nil {
-		for _, v := range types.GlobalPocketNodes {
-			addr := sdk.Address(v.PrivateKey.PublicKey().Address())
-			if (ctx.BlockHeight()+int64(addr[0]))%blocksPerSession == 1 && ctx.BlockHeight() != 1 {
-				// run go routine because cannot access TmNode during end-block period
-				go func() {
-					// use this sleep timer to bypass the beginBlock lock over transactions
-					time.Sleep(time.Duration(rand.Intn(5000)) * time.Millisecond)
-					s, err := am.keeper.TmNode.Synced()
-					if err != nil {
-						ctx.Logger().Error(fmt.Sprintf("could not get status for tendermint node (cannot submit claims/proofs in this state): %s", err.Error()))
-					} else {
-						if s.IsSynced {
-							// auto send the proofs
-							am.keeper.SendClaimTx(ctx, am.keeper, am.keeper.TmNode, &addr, ClaimTx)
-							// auto claim the proofs
-							am.keeper.SendProofTx(ctx, am.keeper.TmNode, &addr, ProofTx)
-							// clear session cache and db
-							types.ClearSessionCache(v.SessionStore)
-						}
+	for _, v := range types.GlobalPocketNodes {
+		addr := sdk.Address(v.PrivateKey.PublicKey().Address())
+		if (ctx.BlockHeight()+int64(addr[0]))%blocksPerSession == 1 && ctx.BlockHeight() != 1 {
+			// run go routine because cannot access TmNode during end-block period
+			go func() {
+				// use this sleep timer to bypass the beginBlock lock over transactions
+				time.Sleep(time.Duration(rand.Intn(5000)) * time.Millisecond)
+				s, err := am.keeper.TmNode.Synced()
+				if err != nil {
+					ctx.Logger().Error(fmt.Sprintf("could not get status for tendermint node (cannot submit claims/proofs in this state): %s", err.Error()))
+				} else {
+					if s != nil && s.IsSynced {
+						// auto send the proofs
+						am.keeper.SendClaimTx(ctx, am.keeper, am.keeper.TmNode, &addr, ClaimTx)
+						// auto claim the proofs
+						am.keeper.SendProofTx(ctx, am.keeper.TmNode, &addr, ProofTx)
+						// clear session cache and db
+						types.ClearSessionCache(v.SessionStore)
 					}
-				}()
-			}
+				}
+			}()
 		}
-	} else {
-		ctx.Logger().Error("pk map not initialized yet in end block")
 	}
 	return []abci.ValidatorUpdate{}
 }

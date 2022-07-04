@@ -10,8 +10,8 @@ import (
 	"sync"
 )
 
-var GlobalEvidenceCache *CacheStorage
-var GlobalSessionCache *CacheStorage
+var GlobalEvidenceCacheLegacy *CacheStorage
+var GlobalSessionCacheLegacy *CacheStorage
 
 var GlobalPocketNodes = map[string]*PocketNode{}
 var GlobalPocketNodesRWLock = sync.RWMutex{}
@@ -31,7 +31,7 @@ func AddPocketNode(pk crypto.PrivateKey, logger log.Logger) *PocketNode {
 		return node
 	}
 	node = &PocketNode{
-		PrivateKey:      pk,
+		PrivateKey: pk,
 	}
 	GlobalPocketNodes[key] = node
 	return node
@@ -57,15 +57,14 @@ func InitPocketNodeCache(node *PocketNode, c types.Config, logger log.Logger) {
 		node.EvidenceStore.Init(c.PocketConfig.DataDir, evidenceDbName, c.TendermintConfig.LevelDBOptions, c.PocketConfig.MaxEvidenceCacheEntires, false)
 		node.SessionStore.Init(c.PocketConfig.DataDir, "", c.TendermintConfig.LevelDBOptions, c.PocketConfig.MaxSessionCacheEntries, true)
 
-		if GlobalSessionCache == nil {
-			GlobalSessionCache = node.SessionStore
-			GlobalEvidenceCache = node.EvidenceStore
+		if GlobalSessionCacheLegacy == nil {
+			GlobalSessionCacheLegacy = node.SessionStore
+			GlobalEvidenceCacheLegacy = node.EvidenceStore
 		}
 	})
 }
 
 func InitPocketNodeCaches(c types.Config, logger log.Logger) {
-
 	// this statement is to allow for backwards compatibility for legacy by grabbing only the first added node
 	if !c.PocketConfig.LeanPocket {
 		node := GetPocketNode()

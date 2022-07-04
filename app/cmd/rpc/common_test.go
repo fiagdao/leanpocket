@@ -78,9 +78,8 @@ func NewInMemoryTendermintNode(t *testing.T, genesisState []byte) (tendermintNod
 		if err != nil {
 			panic(err)
 		}
-		pocketNode := pocketTypes.GetPocketNode()
-		pocketTypes.ClearEvidence(pocketNode.EvidenceStore)
-		pocketTypes.ClearSessionCache(pocketNode.SessionStore)
+		pocketTypes.ClearEvidence(pocketTypes.GlobalEvidenceCacheLegacy)
+		pocketTypes.ClearSessionCache(pocketTypes.GlobalSessionCacheLegacy)
 		inMemKB = nil
 		//err = os.RemoveAll(tendermintNode.Config().DBPath)
 		if err != nil {

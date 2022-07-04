@@ -19,6 +19,7 @@ func (k Keeper) HandleRelay(ctx sdk.Ctx, relay pc.Relay) (*pc.RelayResponse, sdk
 	var pk crypto.PrivateKey
 	var err sdk.Error
 	var evidenceStore *pc.CacheStorage
+	var node *pc.PocketNode
 
 	if pc.GlobalPocketConfig.LeanPocket {
 		// if lean pocket enabled, grab the targeted servicer through the relay proof and set the proper evidence/session caches
@@ -27,17 +28,17 @@ func (k Keeper) HandleRelay(ctx sdk.Ctx, relay pc.Relay) (*pc.RelayResponse, sdk
 			return nil, sdk.ErrInternal("Could not convert servicer hex to public key")
 		}
 		selfAddr := sdk.GetAddress(servicerRelayPublicKey)
-		node, err1 := pc.GetPocketNodeByAddress(&selfAddr)
+		node, err1 = pc.GetPocketNodeByAddress(&selfAddr)
 		if err1 != nil {
 			return nil, sdk.ErrInternal("Failed to find correct servicer PK")
 		}
-		pk = node.PrivateKey
-		evidenceStore = node.EvidenceStore
 	} else {
 		// get self node (your validator) from the current state
-		node := pc.GetPocketNode()
-		evidenceStore = node.EvidenceStore
+		node = pc.GetPocketNode()
 	}
+
+	pk = node.PrivateKey
+	evidenceStore = node.EvidenceStore
 
 	selfAddr := sdk.Address(pk.PublicKey().Address())
 	// retrieve the nonNative blockchains your node is hosting
@@ -109,7 +110,7 @@ func (k Keeper) HandleChallenge(ctx sdk.Ctx, challenge pc.ChallengeProofInvalidD
 	var sessionStore *pc.CacheStorage
 
 	// if lean pocket is enabled, grab a "random" node to handle the challenge request.
-	node  := pc.GetPocketNode()
+	node := pc.GetPocketNode()
 
 	pk = node.PrivateKey
 	evidenceStore = node.EvidenceStore

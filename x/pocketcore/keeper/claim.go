@@ -14,7 +14,7 @@ import (
 )
 
 // "SendClaimTx" - Automatically sends a claim of work/challenge based on relays or challenges stored.
-func (k Keeper) SendClaimTx(ctx sdk.Ctx, keeper Keeper, n client.Client,  address *sdk.Address, claimTx func(pk crypto.PrivateKey, cliCtx util.CLIContext, txBuilder auth.TxBuilder, header pc.SessionHeader, totalProofs int64, root pc.HashRange, evidenceType pc.EvidenceType) (*sdk.TxResponse, error)) {
+func (k Keeper) SendClaimTx(ctx sdk.Ctx, keeper Keeper, n client.Client, address *sdk.Address, claimTx func(pk crypto.PrivateKey, cliCtx util.CLIContext, txBuilder auth.TxBuilder, header pc.SessionHeader, totalProofs int64, root pc.HashRange, evidenceType pc.EvidenceType) (*sdk.TxResponse, error)) {
 	// get the private val key (main) account from the keybase
 
 	var kp crypto.PrivateKey
@@ -103,7 +103,6 @@ func (k Keeper) SendClaimTx(ctx sdk.Ctx, keeper Keeper, n client.Client,  addres
 	}
 }
 
-
 // "ValidateClaim" - Validates a claim message and returns an sdk error if invalid
 func (k Keeper) ValidateClaim(ctx sdk.Ctx, claim pc.MsgClaim) (err sdk.Error) {
 	// check to see if evidence type is included in the message
@@ -142,7 +141,7 @@ func (k Keeper) ValidateClaim(ctx sdk.Ctx, claim pc.MsgClaim) (err sdk.Error) {
 	// get the session node count for the time of the session
 	sessionNodeCount := int(k.SessionNodeCount(sessionContext))
 	// check cache
-	session, found := pc.GetSession(claim.SessionHeader, pc.GlobalSessionCache)
+	session, found := pc.GetSession(claim.SessionHeader, pc.GlobalSessionCacheLegacy)
 	if !found {
 		// use the session end context to ensure that people who were jailed mid session do not get to submit claims
 		sessionEndCtx, er := ctx.PrevCtx(sessionEndHeight)

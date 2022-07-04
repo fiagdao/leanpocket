@@ -43,7 +43,6 @@ func ConvertEvidenceToProto(config types.Config) error {
 
 	InitConfig(nil, log.NewNopLogger(), config)
 
-
 	gec := node.EvidenceStore
 	it, err := gec.Iterator()
 	if err != nil {
@@ -69,9 +68,6 @@ func ConvertEvidenceToProto(config types.Config) error {
 }
 
 func FlushSessionCache() {
-	if GlobalPocketNodes == nil {
-		return
-	}
 	for _, k := range GlobalPocketNodes {
 		err := k.SessionStore.FlushToDB()
 		if err != nil {
