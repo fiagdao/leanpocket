@@ -4,25 +4,21 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/pokt-network/pocket-core/crypto"
-	"time"
-
 	sdk "github.com/pokt-network/pocket-core/types"
 	pc "github.com/pokt-network/pocket-core/x/pocketcore/types"
+	"time"
 )
 
-// "HandleRelay" - Handles an api (read/write) request to a non-native (external) blockchain
+// HandleRelay handles an api (read/write) request to a non-native (external) blockchain
 func (k Keeper) HandleRelay(ctx sdk.Ctx, relay pc.Relay) (*pc.RelayResponse, sdk.Error) {
 	relayTimeStart := time.Now()
 	// get the latest session block height because this relay will correspond with the latest session
 	sessionBlockHeight := k.GetLatestSessionBlockHeight(ctx)
-
-	var pk crypto.PrivateKey
 	var err sdk.Error
-	var evidenceStore *pc.CacheStorage
 	var node *pc.PocketNode
 
 	if pc.GlobalPocketConfig.LeanPocket {
-		// if lean pocket enabled, grab the targeted servicer through the relay proof and set the proper evidence/session caches
+		// if lean pocket enabled, grab the targeted servicer through the relay proof
 		servicerRelayPublicKey, err1 := crypto.NewPublicKey(relay.Proof.ServicerPubKey)
 		if err1 != nil {
 			return nil, sdk.ErrInternal("Could not convert servicer hex to public key")
@@ -37,14 +33,11 @@ func (k Keeper) HandleRelay(ctx sdk.Ctx, relay pc.Relay) (*pc.RelayResponse, sdk
 		node = pc.GetPocketNode()
 	}
 
-	pk = node.PrivateKey
-	evidenceStore = node.EvidenceStore
-
-	selfAddr := sdk.Address(pk.PublicKey().Address())
+	selfAddr := sdk.Address(node.PrivateKey.PublicKey().Address())
 	// retrieve the nonNative blockchains your node is hosting
 	hostedBlockchains := k.GetHostedBlockchains()
 	// ensure the validity of the relay
-	maxPossibleRelays, err := relay.Validate(ctx, k.posKeeper, k.appKeeper, k, selfAddr, hostedBlockchains, sessionBlockHeight, evidenceStore)
+	maxPossibleRelays, err := relay.Validate(ctx, k.posKeeper, k.appKeeper, k, selfAddr, hostedBlockchains, sessionBlockHeight, node.EvidenceStore)
 	if err != nil {
 		if pc.GlobalPocketConfig.RelayErrors {
 			ctx.Logger().Error(
@@ -68,7 +61,7 @@ func (k Keeper) HandleRelay(ctx sdk.Ctx, relay pc.Relay) (*pc.RelayResponse, sdk
 		return nil, err
 	}
 	// store the proof before execution, because the proof corresponds to the previous relay
-	relay.Proof.Store(maxPossibleRelays, evidenceStore)
+	relay.Proof.Store(maxPossibleRelays, node.EvidenceStore)
 	// attempt to execute
 	respPayload, err := relay.Execute(hostedBlockchains, &selfAddr)
 	if err != nil {
@@ -81,7 +74,7 @@ func (k Keeper) HandleRelay(ctx sdk.Ctx, relay pc.Relay) (*pc.RelayResponse, sdk
 		Proof:    relay.Proof,
 	}
 	// sign the response
-	sig, er := pk.Sign(resp.Hash())
+	sig, er := node.PrivateKey.Sign(resp.Hash())
 	if er != nil {
 		ctx.Logger().Error(
 			fmt.Sprintf("could not sign response for address: %s with hash: %v, with error: %s",
@@ -94,30 +87,38 @@ func (k Keeper) HandleRelay(ctx sdk.Ctx, relay pc.Relay) (*pc.RelayResponse, sdk
 	// track the relay time
 	relayTime := time.Since(relayTimeStart)
 	// add to metrics
-
 	pc.GlobalServiceMetric().AddRelayTimingFor(relay.Proof.Blockchain, float64(relayTime.Milliseconds()), &selfAddr)
 	pc.GlobalServiceMetric().AddRelayFor(relay.Proof.Blockchain, &selfAddr)
-
 	return resp, nil
 }
 
 // "HandleChallenge" - Handles a client relay response challenge request
 func (k Keeper) HandleChallenge(ctx sdk.Ctx, challenge pc.ChallengeProofInvalidData) (*pc.ChallengeResponse, sdk.Error) {
 
-	var pk crypto.PrivateKey
-	var err sdk.Error
-	var evidenceStore *pc.CacheStorage
-	var sessionStore *pc.CacheStorage
+	var node *pc.PocketNode
 
-	// if lean pocket is enabled, grab a "random" node to handle the challenge request.
-	node := pc.GetPocketNode()
-
-	pk = node.PrivateKey
-	evidenceStore = node.EvidenceStore
-	sessionStore = node.SessionStore
+	if pc.GlobalPocketConfig.LeanPocket {
+		// try to retrieve one of the nodes that were part of session
+		for _, r := range challenge.MajorityResponses {
+			servicerRelayPublicKey, err1 := crypto.NewPublicKey(r.Proof.ServicerPubKey)
+			if err1 != nil {
+				continue
+			}
+			selfAddr := sdk.GetAddress(servicerRelayPublicKey)
+			node, err1 = pc.GetPocketNodeByAddress(&selfAddr)
+			if node != nil {
+				break
+			}
+		}
+		if node == nil {
+			return nil, pc.NewNodeNotInSessionError(pc.ModuleName)
+		}
+	} else {
+		node = pc.GetPocketNode()
+	}
 
 	// get self node (your validator) from the current state
-	selfNode := sdk.GetAddress(pk.PublicKey())
+	selfNode := sdk.GetAddress(node.PrivateKey.PublicKey())
 	sessionBlkHeight := k.GetLatestSessionBlockHeight(ctx)
 	// get the session context
 	sessionCtx, er := ctx.PrevCtx(sessionBlkHeight)
@@ -136,7 +137,7 @@ func (k Keeper) HandleChallenge(ctx sdk.Ctx, challenge pc.ChallengeProofInvalidD
 		SessionBlockHeight: sessionCtx.BlockHeight(),
 	}
 	// check cache
-	session, found := pc.GetSession(header, sessionStore)
+	session, found := pc.GetSession(header, node.SessionStore)
 	// if not found generate the session
 	if !found {
 		var err sdk.Error
@@ -149,15 +150,15 @@ func (k Keeper) HandleChallenge(ctx sdk.Ctx, challenge pc.ChallengeProofInvalidD
 			return nil, err
 		}
 		// add to cache
-		pc.SetSession(session, sessionStore)
+		pc.SetSession(session, node.SessionStore)
 	}
 	// validate the challenge
-	err = challenge.ValidateLocal(header, app.GetMaxRelays(), app.GetChains(), int(k.SessionNodeCount(sessionCtx)), session.SessionNodes, selfNode, evidenceStore)
+	err := challenge.ValidateLocal(header, app.GetMaxRelays(), app.GetChains(), int(k.SessionNodeCount(sessionCtx)), session.SessionNodes, selfNode, node.EvidenceStore)
 	if err != nil {
 		return nil, err
 	}
 	// store the challenge in memory
-	challenge.Store(app.GetMaxRelays(), evidenceStore)
+	challenge.Store(app.GetMaxRelays(), node.EvidenceStore)
 	// update metric
 	pc.GlobalServiceMetric().AddChallengeFor(header.Chain, &selfNode)
 	return &pc.ChallengeResponse{Response: fmt.Sprintf("successfully stored challenge proof for %s", challenge.MinorityResponse.Proof.ServicerPubKey)}, nil

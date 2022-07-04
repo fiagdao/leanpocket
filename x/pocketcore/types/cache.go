@@ -292,7 +292,7 @@ func (si *SessionIt) Value() (session Session) {
 	return
 }
 
-// "SessionIterator" - Returns an instance iterator of the GlobalSessionCacheLegacy
+// "SessionIterator" - Returns an instance iterator of the GlobalSessionCache
 func SessionIterator(sessionStore *CacheStorage) SessionIt {
 	it, _ := sessionStore.Iterator()
 	return SessionIt{
@@ -355,7 +355,6 @@ func SetEvidence(evidence Evidence, evidenceStore *CacheStorage) {
 
 // "SealEvidence" - Locks/sets the evidence from the stores
 func SealEvidence(evidence Evidence, storage *CacheStorage) (Evidence, bool) {
-	// delete from cache
 	co, ok := storage.Seal(evidence)
 	if !ok {
 		return Evidence{}, ok
@@ -372,7 +371,7 @@ func ClearEvidence(evidenceStore *CacheStorage) {
 	}
 }
 
-// "EvidenceIt" - An GOBEvidence iterator instance of the GlobalEvidenceCacheLegacy
+// "EvidenceIt" - An GOBEvidence iterator instance of the GlobalEvidenceCache
 type EvidenceIt struct {
 	db.Iterator
 }
@@ -391,7 +390,7 @@ func (ei *EvidenceIt) Value() (evidence Evidence) {
 	return
 }
 
-// "EvidenceIterator" - Returns a GlobalEvidenceCacheLegacy iterator instance
+// "EvidenceIterator" - Returns a GlobalEvidenceCache iterator instance
 func EvidenceIterator(evidenceStore *CacheStorage) EvidenceIt {
 	it, _ := evidenceStore.Iterator()
 	return EvidenceIt{

@@ -89,8 +89,8 @@ func NewInMemoryTendermintNodeAmino(t *testing.T, genesisState []byte) (tendermi
 		if err != nil {
 			panic(err)
 		}
-		pocketTypes.ClearEvidence(pocketTypes.GlobalEvidenceCacheLegacy)
-		pocketTypes.ClearSessionCache(pocketTypes.GlobalSessionCacheLegacy)
+		pocketTypes.ClearEvidence(pocketTypes.GlobalEvidenceCache)
+		pocketTypes.ClearSessionCache(pocketTypes.GlobalSessionCache)
 		PCA = nil
 		inMemKB = nil
 		err := inMemDB.Close()
@@ -122,6 +122,7 @@ func NewInMemoryTendermintNodeProto(t *testing.T, genesisState []byte) (tendermi
 	}
 	assert.NotNil(t, tendermintNode)
 	assert.NotNil(t, keybase)
+
 	// init cache in memory
 	pocketTypes.InitConfig(&pocketTypes.HostedBlockchains{
 		M: make(map[string]pocketTypes.HostedBlockchain),
@@ -142,9 +143,11 @@ func NewInMemoryTendermintNodeProto(t *testing.T, genesisState []byte) (tendermi
 			panic(err)
 		}
 
-		node := pocketTypes.GetPocketNode()
-		pocketTypes.ClearEvidence(node.EvidenceStore)
-		pocketTypes.ClearSessionCache(node.SessionStore)
+		pocketTypes.ClearEvidence(pocketTypes.GlobalEvidenceCache)
+		pocketTypes.ClearSessionCache(pocketTypes.GlobalSessionCache)
+		pocketTypes.GlobalSessionCache = nil
+		pocketTypes.GlobalEvidenceCache = nil
+		pocketTypes.GlobalPocketNodes = map[string]*pocketTypes.PocketNode{}
 
 		PCA = nil
 		inMemKB = nil

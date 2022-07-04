@@ -12,10 +12,6 @@ import (
 
 // "Session" - The relationship between an application and the pocket network
 
-func (s Session) IsSealed() bool {
-	return false
-}
-
 func (s Session) IsSealable() bool {
 	return false
 }

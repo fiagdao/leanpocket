@@ -3,18 +3,18 @@ package types
 import (
 	"fmt"
 	"github.com/pokt-network/pocket-core/crypto"
+	"github.com/pokt-network/pocket-core/types"
 	sdk "github.com/pokt-network/pocket-core/types"
-	types "github.com/pokt-network/pocket-core/types"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/privval"
 	"sync"
 )
 
-var GlobalEvidenceCacheLegacy *CacheStorage
-var GlobalSessionCacheLegacy *CacheStorage
+// GlobalEvidenceCache & GlobalSessionCache is used for the first pocket node and acts as backwards-compatibility for pre-lean pocket
+var GlobalEvidenceCache *CacheStorage
+var GlobalSessionCache *CacheStorage
 
 var GlobalPocketNodes = map[string]*PocketNode{}
-var GlobalPocketNodesRWLock = sync.RWMutex{}
 
 // PocketNode represents an entity in the network that is able to handle dispatches, servicing, challenges, and submit proofs/claims.
 type PocketNode struct {
@@ -49,29 +49,26 @@ func AddPocketNodeByFilePVKey(fpvKey privval.FilePVKey, logger log.Logger) {
 func InitPocketNodeCache(node *PocketNode, c types.Config, logger log.Logger) {
 	node.DoCacheInitOnce.Do(func() {
 		evidenceDbName := GlobalPocketConfig.EvidenceDBName
+
+		// In LeanPocket, we create a evidence store on disk with suffix of the node's address
 		if c.PocketConfig.LeanPocket {
 			evidenceDbName = evidenceDbName + "_" + sdk.GetAddress(node.PrivateKey.PublicKey()).String()
 		}
+
 		node.EvidenceStore = new(CacheStorage)
 		node.SessionStore = new(CacheStorage)
 		node.EvidenceStore.Init(c.PocketConfig.DataDir, evidenceDbName, c.TendermintConfig.LevelDBOptions, c.PocketConfig.MaxEvidenceCacheEntires, false)
 		node.SessionStore.Init(c.PocketConfig.DataDir, "", c.TendermintConfig.LevelDBOptions, c.PocketConfig.MaxSessionCacheEntries, true)
 
-		if GlobalSessionCacheLegacy == nil {
-			GlobalSessionCacheLegacy = node.SessionStore
-			GlobalEvidenceCacheLegacy = node.EvidenceStore
+		// Set the GOBSession and GOBEvidence Caches for legacy compatibility for pre-leanpocket
+		if GlobalSessionCache == nil {
+			GlobalSessionCache = node.SessionStore
+			GlobalEvidenceCache = node.EvidenceStore
 		}
 	})
 }
 
 func InitPocketNodeCaches(c types.Config, logger log.Logger) {
-	// this statement is to allow for backwards compatibility for legacy by grabbing only the first added node
-	if !c.PocketConfig.LeanPocket {
-		node := GetPocketNode()
-		InitPocketNodeCache(node, c, logger)
-		return
-	}
-
 	for _, node := range GlobalPocketNodes {
 		InitPocketNodeCache(node, c, logger)
 	}

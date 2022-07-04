@@ -119,7 +119,7 @@ func (r Relay) Execute(hostedBlockchains *HostedBlockchains, address *sdk.Addres
 	chain, err := hostedBlockchains.GetChain(r.Proof.Blockchain)
 	if err != nil {
 		// metric track
-		go func() { GlobalServiceMetric().AddErrorFor(r.Proof.Blockchain, address) }()
+		GlobalServiceMetric().AddErrorFor(r.Proof.Blockchain, address)
 		return "", err
 	}
 	url := strings.Trim(chain.URL, `/`)
@@ -130,8 +130,7 @@ func (r Relay) Execute(hostedBlockchains *HostedBlockchains, address *sdk.Addres
 	res, er := executeHTTPRequest(r.Payload.Data, url, GlobalPocketConfig.UserAgent, chain.BasicAuth, r.Payload.Method, r.Payload.Headers)
 	if er != nil {
 		// metric track
-		go func() { GlobalServiceMetric().AddErrorFor(r.Proof.Blockchain, address) }()
-
+		GlobalServiceMetric().AddErrorFor(r.Proof.Blockchain, address)
 		return res, NewHTTPExecutionError(ModuleName, er)
 	}
 	return res, nil
