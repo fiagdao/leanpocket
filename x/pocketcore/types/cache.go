@@ -17,7 +17,7 @@ import (
 
 var (
 	// sync.once to perform initialization
-	configOnce sync.Once
+	ConfigOnce sync.Once
 )
 
 // "CacheStorage" - Contains an LRU cache and a database instance w/ mutex

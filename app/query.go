@@ -517,12 +517,12 @@ func (app PocketCoreApp) HandleRelay(r pocketTypes.Relay) (res *pocketTypes.Rela
 		return nil, nil, err
 	}
 
-	status, sErr := app.pocketKeeper.TmNode.Synced()
+	status, sErr := app.pocketKeeper.TmNode.ConsensusReactorStatus()
 	if sErr != nil {
 		return nil, nil, fmt.Errorf("pocket node is unable to retrieve synced status from tendermint node, cannot service in this state")
 	}
-	
-	if !status.IsSynced {
+
+	if status.IsCatchingUp {
 		return nil, nil, fmt.Errorf("pocket node is currently syncing to the blockchain, cannot service in this state")
 	}
 

@@ -23,10 +23,10 @@ var (
 )
 
 func InitConfig(chains *HostedBlockchains, logger log.Logger, c types.Config) {
-	configOnce.Do(func() {
-		InitPocketNodeCaches(c, logger)
+	ConfigOnce.Do(func() {
 		InitGlobalServiceMetric(chains, logger, c.PocketConfig.PrometheusAddr, c.PocketConfig.PrometheusMaxOpenfiles)
 	})
+	InitPocketNodeCaches(c, logger)
 	GlobalPocketConfig = c.PocketConfig
 	GlobalTenderMintConfig = c.TendermintConfig
 	if GlobalPocketConfig.LeanPocket {

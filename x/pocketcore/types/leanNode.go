@@ -24,8 +24,13 @@ type PocketNode struct {
 	DoCacheInitOnce sync.Once
 }
 
+func (n PocketNode) GetAddress() sdk.Address {
+	return sdk.GetAddress(n.PrivateKey.PublicKey())
+}
+
 func AddPocketNode(pk crypto.PrivateKey, logger log.Logger) *PocketNode {
 	key := sdk.GetAddress(pk.PublicKey()).String()
+	logger.Info("Adding " + key + " to list of pocket nodes")
 	node, exists := GlobalPocketNodes[key]
 	if exists {
 		return node
@@ -49,14 +54,14 @@ func AddPocketNodeByFilePVKey(fpvKey privval.FilePVKey, logger log.Logger) {
 func InitPocketNodeCache(node *PocketNode, c types.Config, logger log.Logger) {
 	node.DoCacheInitOnce.Do(func() {
 		evidenceDbName := GlobalPocketConfig.EvidenceDBName
-
+		address := node.GetAddress().String()
 		// In LeanPocket, we create a evidence store on disk with suffix of the node's address
 		if c.PocketConfig.LeanPocket {
-			evidenceDbName = evidenceDbName + "_" + sdk.GetAddress(node.PrivateKey.PublicKey()).String()
+			evidenceDbName = evidenceDbName + "_" + address
 		}
-
-		node.EvidenceStore = new(CacheStorage)
-		node.SessionStore = new(CacheStorage)
+		logger.Info("Initializing " + address + " session and evidence cache")
+		node.EvidenceStore = &CacheStorage{}
+		node.SessionStore = &CacheStorage{}
 		node.EvidenceStore.Init(c.PocketConfig.DataDir, evidenceDbName, c.TendermintConfig.LevelDBOptions, c.PocketConfig.MaxEvidenceCacheEntires, false)
 		node.SessionStore.Init(c.PocketConfig.DataDir, "", c.TendermintConfig.LevelDBOptions, c.PocketConfig.MaxSessionCacheEntries, true)
 
@@ -81,6 +86,30 @@ func GetPocketNodeByAddress(address *sdk.Address) (*PocketNode, error) {
 		return nil, fmt.Errorf("failed to find private key for %s", address.String())
 	}
 	return node, nil
+}
+
+// CleanPocketNodes sets the global pocket nodes and its caches back to original state as if the node is starting up again.
+// Cleaning up pocket nodes is used for unit and integration tests where the cache is initialized in various scenarios (relays, tx, etc).
+func CleanPocketNodes() {
+	for _, n := range GlobalPocketNodes {
+		if n == nil {
+			continue
+		}
+		cacheToClean := []*CacheStorage{n.EvidenceStore, n.SessionStore}
+		for _, r := range cacheToClean {
+			if r == nil {
+				continue
+			}
+			r.Clear()
+			if r.DB == nil {
+				continue
+			}
+			r.DB.Close()
+		}
+		GlobalEvidenceCache = nil
+		GlobalSessionCache = nil
+		GlobalPocketNodes = map[string]*PocketNode{}
+	}
 }
 
 // GetPocketNode returns a PocketNode from global map GlobalPocketNodes, it does not guarantee order

@@ -108,11 +108,11 @@ func (am AppModule) EndBlock(ctx sdk.Ctx, _ abci.RequestEndBlock) []abci.Validat
 			go func() {
 				// use this sleep timer to bypass the beginBlock lock over transactions
 				time.Sleep(time.Duration(rand.Intn(5000)) * time.Millisecond)
-				s, err := am.keeper.TmNode.Synced()
+				s, err := am.keeper.TmNode.ConsensusReactorStatus()
 				if err != nil {
 					ctx.Logger().Error(fmt.Sprintf("could not get status for tendermint node (cannot submit claims/proofs in this state): %s", err.Error()))
 				} else {
-					if s != nil && s.IsSynced {
+					if !s.IsCatchingUp {
 						// auto send the proofs
 						am.keeper.SendClaimTx(ctx, am.keeper, am.keeper.TmNode, &addr, ClaimTx)
 						// auto claim the proofs

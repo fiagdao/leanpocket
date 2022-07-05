@@ -40,14 +40,14 @@ const (
 type ServiceMetrics struct {
 	l               sync.Mutex
 	tmLogger        log.Logger
-	ServiceMetric   `json:"accumulated_service_metrics"`                         // total metrics
-	NonNativeChains map[string]ServiceMetric `json:"individual_service_metrics"` // metrics per chain
+	ServiceMetric   `json:"accumulated_service_metrics"` // total metrics
+	NonNativeChains map[string]ServiceMetric             `json:"individual_service_metrics"` // metrics per chain
 	prometheusSrv   *http.Server
 }
 
 type ServiceMetricsEncodable struct {
-	ServiceMetric   `json:"accumulated_service_metrics"`                // total metrics
-	NonNativeChains []ServiceMetric `json:"individual_service_metrics"` // metrics per chain
+	ServiceMetric   `json:"accumulated_service_metrics"` // total metrics
+	NonNativeChains []ServiceMetric                      `json:"individual_service_metrics"` // metrics per chain
 }
 
 func GlobalServiceMetric() *ServiceMetrics {
@@ -225,7 +225,7 @@ func (sm *ServiceMetrics) AddSessionFor(networkID string, nodeAddress *sdk.Addre
 	if nodeAddress == nil {
 		// this implies that user is not running in lean pocket
 		node := GetPocketNode()
-		if node != nil {
+		if node == nil {
 			sm.tmLogger.Error("unable to load privateKey", networkID)
 			return
 		}

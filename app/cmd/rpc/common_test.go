@@ -78,11 +78,7 @@ func NewInMemoryTendermintNode(t *testing.T, genesisState []byte) (tendermintNod
 		if err != nil {
 			panic(err)
 		}
-		pocketTypes.ClearEvidence(pocketTypes.GlobalEvidenceCache)
-		pocketTypes.ClearSessionCache(pocketTypes.GlobalSessionCache)
-		pocketTypes.GlobalSessionCache = nil
-		pocketTypes.GlobalEvidenceCache = nil
-		pocketTypes.GlobalPocketNodes = map[string]*pocketTypes.PocketNode{}
+		pocketTypes.CleanPocketNodes()
 		inMemKB = nil
 		//err = os.RemoveAll(tendermintNode.Config().DBPath)
 		if err != nil {
@@ -173,6 +169,7 @@ func inMemTendermintNode(genesisState []byte) (*node.Node, keys.Keybase) {
 	privVal.Key[0].PrivKey = pk
 	privVal.Key[0].PubKey = pk.PubKey()
 	privVal.Key[0].Address = pk.PubKey().Address()
+	pocketTypes.CleanPocketNodes()
 	pocketTypes.AddPocketNodeByFilePVKey(privVal.Key[0], c.Logger)
 
 	creator := func(logger log.Logger, db dbm.DB, _ io.Writer) *app.PocketCoreApp {

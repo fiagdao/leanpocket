@@ -13,6 +13,7 @@ import (
 func InitCacheTest() {
 	logger := log.NewNopLogger()
 	testingConfig := sdk.DefaultTestingPocketConfig()
+	CleanPocketNodes()
 	AddPocketNode(GetRandomPrivateKey(), log.NewNopLogger())
 	InitConfig(&HostedBlockchains{
 		M: make(map[string]HostedBlockchain),

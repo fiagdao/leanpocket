@@ -146,17 +146,19 @@ func createTestInput(t *testing.T, isCheckTx bool) (sdk.Ctx, []nodesTypes.Valida
 			URL: "https://www.google.com:443",
 		}},
 	}
-	types.InitConfig(&hb, log.NewTMLogger(os.Stdout), sdk.DefaultTestingPocketConfig())
+
 	cb, err := kb.GetCoinbase()
 	assert.Nil(t, err)
 	addr := tmtypes.Address(cb.GetAddress())
 	pk, err := kb.ExportPrivateKeyObject(cb.GetAddress(), "test")
 	assert.Nil(t, err)
+	types.CleanPocketNodes()
 	types.AddPocketNodeByFilePVKey(privval.FilePVKey{
 		Address: addr,
 		PubKey:  cb.PublicKey,
 		PrivKey: pk,
 	}, ctx.Logger())
+	types.InitConfig(&hb, log.NewTMLogger(os.Stdout), sdk.DefaultTestingPocketConfig())
 
 	authSubspace := sdk.NewSubspace(auth.DefaultParamspace)
 	nodesSubspace := sdk.NewSubspace(nodesTypes.DefaultParamspace)
