@@ -77,7 +77,7 @@ func makeTestCodec() *codec.Codec {
 }
 
 // : deadcode unused
-func createTestInput(t *testing.T, isCheckTx bool) (sdk.Ctx, []nodesTypes.Validator, []appsTypes.Application, []auth.BaseAccount, Keeper, map[string]*sdk.KVStoreKey, keys.Keybase) {
+func createTestInput(t *testing.T, isCheckTx bool, numOfNodes uint) (sdk.Ctx, []nodesTypes.Validator, []appsTypes.Application, []auth.BaseAccount, Keeper, map[string]*sdk.KVStoreKey, keys.Keybase) {
 	sdk.VbCCache = sdk.NewCache(1)
 	initPower := int64(100000000000)
 	nAccs := int64(5)
@@ -150,15 +150,25 @@ func createTestInput(t *testing.T, isCheckTx bool) (sdk.Ctx, []nodesTypes.Valida
 	cb, err := kb.GetCoinbase()
 	assert.Nil(t, err)
 	addr := tmtypes.Address(cb.GetAddress())
-	pk, err := kb.ExportPrivateKeyObject(cb.GetAddress(), "test")
-	assert.Nil(t, err)
+
 	types.CleanPocketNodes()
-	types.AddPocketNodeByFilePVKey(privval.FilePVKey{
-		Address: addr,
-		PubKey:  cb.PublicKey,
-		PrivKey: pk,
-	}, ctx.Logger())
-	types.InitConfig(&hb, log.NewTMLogger(os.Stdout), sdk.DefaultTestingPocketConfig())
+
+	if numOfNodes == 1 {
+		pk, err := kb.ExportPrivateKeyObject(cb.GetAddress(), "test")
+		assert.Nil(t, err)
+		types.AddPocketNodeByFilePVKey(privval.FilePVKey{
+			Address: addr,
+			PubKey:  cb.PublicKey,
+			PrivKey: pk,
+		}, ctx.Logger())
+	} else {
+		for i := 0; i < int(numOfNodes); i++ {
+			pk := getRandomPrivateKey()
+			types.AddPocketNode(pk, ctx.Logger())
+		}
+	}
+
+	types.InitConfig(&hb, log.NewTMLogger(os.Stdout), sdk.DefaultTestingPocketConfig(numOfNodes > 1))
 
 	authSubspace := sdk.NewSubspace(auth.DefaultParamspace)
 	nodesSubspace := sdk.NewSubspace(nodesTypes.DefaultParamspace)
@@ -191,7 +201,7 @@ func createTestInput(t *testing.T, isCheckTx bool) (sdk.Ctx, []nodesTypes.Valida
 }
 
 func createTestInputWithLean(t *testing.T, isCheckTx bool) (sdk.Ctx, []nodesTypes.Validator, []appsTypes.Application, []auth.BaseAccount, Keeper, map[string]*sdk.KVStoreKey, keys.Keybase) {
-	ctx, vals, ap, accs, keeper, keys, kb := createTestInput(t, isCheckTx)
+	ctx, vals, ap, accs, keeper, keys, kb := createTestInput(t, isCheckTx, 1)
 	return ctx, vals, ap, accs, keeper, keys, kb
 }
 
@@ -368,6 +378,7 @@ func getRandomValidatorAddress() sdk.Address {
 	return sdk.Address(getRandomPubKey().Address())
 }
 
+// numOfNodes
 func simulateRelays(t *testing.T, k Keeper, ctx *sdk.Ctx, maxRelays int) (npk crypto.PublicKey, validHeader types.SessionHeader, keys simulateRelayKeys) {
 	npk = getRandomPubKey()
 	ethereum := hex.EncodeToString([]byte{01})
@@ -380,12 +391,14 @@ func simulateRelays(t *testing.T, k Keeper, ctx *sdk.Ctx, maxRelays int) (npk cr
 	logger := log.NewNopLogger()
 	types.InitConfig(&types.HostedBlockchains{
 		M: make(map[string]types.HostedBlockchain),
-	}, logger, sdk.DefaultTestingPocketConfig())
+	}, logger, sdk.DefaultTestingPocketConfig(len(types.GlobalPocketNodes) > 1))
 
 	// NOTE Add a minimum of 5 proofs to memInvoice to be able to create a merkle tree
-	for j := 0; j < maxRelays; j++ {
-		proof := createProof(getTestApplicationPrivateKey(), clientKey, npk, ethereum, j)
-		types.SetProof(validHeader, types.RelayEvidence, proof, sdk.NewInt(100000), types.GlobalEvidenceCache)
+	for _, node := range types.GlobalPocketNodes {
+		for j := 0; j < maxRelays; j++ {
+			proof := createProof(getTestApplicationPrivateKey(), clientKey, npk, ethereum, j)
+			types.SetProof(validHeader, types.RelayEvidence, proof, sdk.NewInt(100000), node.EvidenceStore)
+		}
 	}
 	mockCtx := new(Ctx)
 	mockCtx.On("KVStore", k.storeKey).Return((*ctx).KVStore(k.storeKey))

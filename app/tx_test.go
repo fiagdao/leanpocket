@@ -35,7 +35,7 @@ func TestMain(m *testing.M) {
 func TestUnstakeApp(t *testing.T) {
 	tt := []struct {
 		name         string
-		memoryNodeFn func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		memoryNodeFn func(t *testing.T, genesisState []byte, numOfNodes uint) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
 		*upgrades
 	}{
 		{name: "unstake an amino app with amino codec", memoryNodeFn: NewInMemoryTendermintNodeAmino, upgrades: &upgrades{codecUpgrade: codecUpgrade{false, 7000}}},
@@ -47,7 +47,7 @@ func TestUnstakeApp(t *testing.T) {
 				codec.UpgradeHeight = tc.upgrades.codecUpgrade.height
 				_ = memCodecMod(tc.upgrades.codecUpgrade.upgradeMod)
 			}
-			_, kb, cleanup := tc.memoryNodeFn(t, oneAppTwoNodeGenesis())
+			_, kb, cleanup := tc.memoryNodeFn(t, oneAppTwoNodeGenesis(), 1)
 			time.Sleep(1 * time.Second)
 			kp, err := kb.GetCoinbase()
 			assert.Nil(t, err)
@@ -96,7 +96,7 @@ func TestUnstakeApp(t *testing.T) {
 func TestStakeApp(t *testing.T) {
 	tt := []struct {
 		name         string
-		memoryNodeFn func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		memoryNodeFn func(t *testing.T, genesisState []byte, numOfNodes uint) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
 		*upgrades
 	}{
 		{name: "stake app with amino codec", memoryNodeFn: NewInMemoryTendermintNodeAmino, upgrades: &upgrades{codecUpgrade: codecUpgrade{false, 7000}}},
@@ -109,7 +109,7 @@ func TestStakeApp(t *testing.T) {
 				_ = memCodecMod(tc.upgrades.codecUpgrade.upgradeMod)
 			}
 
-			_, kb, cleanup := tc.memoryNodeFn(t, oneAppTwoNodeGenesis())
+			_, kb, cleanup := tc.memoryNodeFn(t, oneAppTwoNodeGenesis(), 1)
 			time.Sleep(1 * time.Second)
 			kp, err := kb.GetCoinbase()
 			assert.Nil(t, err)
@@ -140,7 +140,7 @@ func TestStakeApp(t *testing.T) {
 func TestEditStakeApp(t *testing.T) {
 	tt := []struct {
 		name         string
-		memoryNodeFn func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		memoryNodeFn func(t *testing.T, genesisState []byte, numOfNodes uint) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
 		*upgrades
 	}{
 		{name: "editStake a proto application with proto codec", memoryNodeFn: NewInMemoryTendermintNodeProto, upgrades: &upgrades{codecUpgrade: codecUpgrade{true, 2}}},
@@ -152,7 +152,7 @@ func TestEditStakeApp(t *testing.T) {
 				_ = memCodecMod(tc.upgrades.codecUpgrade.upgradeMod)
 			}
 			var newChains = []string{"2121"}
-			_, kb, cleanup := tc.memoryNodeFn(t, oneAppTwoNodeGenesis())
+			_, kb, cleanup := tc.memoryNodeFn(t, oneAppTwoNodeGenesis(), 1)
 			time.Sleep(1 * time.Second)
 			kp, err := kb.GetCoinbase()
 			assert.Nil(t, err)
@@ -194,7 +194,7 @@ func TestEditStakeApp(t *testing.T) {
 func TestUnstakeNode(t *testing.T) {
 	tt := []struct {
 		name           string
-		memoryNodeFn   func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		memoryNodeFn   func(t *testing.T, genesisState []byte, numOfNodes uint) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
 		outputIsSigner bool
 		*upgrades
 	}{
@@ -218,7 +218,7 @@ func TestUnstakeNode(t *testing.T) {
 
 			var chains = []string{"0001"}
 			gen, _ := twoValTwoNodeGenesisState()
-			_, kb, cleanup := tc.memoryNodeFn(t, gen)
+			_, kb, cleanup := tc.memoryNodeFn(t, gen, 1)
 			time.Sleep(1 * time.Second)
 			kp, err := kb.GetCoinbase()
 			assert.Nil(t, err)
@@ -290,7 +290,7 @@ func TestUnstakeNode(t *testing.T) {
 func TestStakeNode(t *testing.T) {
 	tt := []struct {
 		name           string
-		memoryNodeFn   func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		memoryNodeFn   func(t *testing.T, genesisState []byte, numOfNodes uint) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
 		outputIsSigner bool
 		*upgrades
 	}{
@@ -312,7 +312,7 @@ func TestStakeNode(t *testing.T) {
 				isAfter8 = true
 			}
 			gen, vals := twoValTwoNodeGenesisState()
-			_, kb, cleanup := tc.memoryNodeFn(t, gen)
+			_, kb, cleanup := tc.memoryNodeFn(t, gen, 1)
 			time.Sleep(1 * time.Second)
 			kp, err := kb.GetCoinbase()
 			signer := kp.GetAddress()
@@ -349,7 +349,7 @@ func TestStakeNode(t *testing.T) {
 func TestEditStakeNode(t *testing.T) {
 	tt := []struct {
 		name           string
-		memoryNodeFn   func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		memoryNodeFn   func(t *testing.T, genesisState []byte, numOfNodes uint) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
 		outputIsSigner bool
 		*upgrades
 	}{
@@ -374,7 +374,7 @@ func TestEditStakeNode(t *testing.T) {
 			var newChains = []string{"2121"}
 			var newServiceURL = "https://newServiceUrl.com:8081"
 			gen, vals := twoValTwoNodeGenesisState()
-			_, kb, cleanup := tc.memoryNodeFn(t, gen)
+			_, kb, cleanup := tc.memoryNodeFn(t, gen, 1)
 			time.Sleep(1 * time.Second)
 			kp, err := kb.GetCoinbase()
 			assert.Nil(t, err)
@@ -420,7 +420,7 @@ func TestEditStakeNode(t *testing.T) {
 func TestEditStakeNodeOutput(t *testing.T) {
 	tt := []struct {
 		name           string
-		memoryNodeFn   func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		memoryNodeFn   func(t *testing.T, genesisState []byte, numOfNodes uint) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
 		outputIsSigner bool
 		*upgrades
 	}{
@@ -437,7 +437,7 @@ func TestEditStakeNodeOutput(t *testing.T) {
 			var newChains = []string{"2121"}
 			var newServiceURL = "https://newServiceUrl.com:8081"
 			gen, _ := twoValTwoNodeGenesisState()
-			_, kb, cleanup := tc.memoryNodeFn(t, gen)
+			_, kb, cleanup := tc.memoryNodeFn(t, gen, 1)
 			time.Sleep(1 * time.Second)
 			kp, err := kb.GetCoinbase()
 			assert.Nil(t, err)
@@ -490,7 +490,7 @@ func TestEditStakeNodeOutput(t *testing.T) {
 func TestUnstakeNode8(t *testing.T) {
 	tt := []struct {
 		name           string
-		memoryNodeFn   func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		memoryNodeFn   func(t *testing.T, genesisState []byte, numOfNodes uint) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
 		outputIsSigner bool
 		*upgrades
 	}{
@@ -512,7 +512,7 @@ func TestUnstakeNode8(t *testing.T) {
 			}
 			var chains = []string{"0001"}
 			gen, vals := twoValTwoNodeGenesisState8()
-			_, kb, cleanup := tc.memoryNodeFn(t, gen)
+			_, kb, cleanup := tc.memoryNodeFn(t, gen, 1)
 			time.Sleep(1 * time.Second)
 			kp, err := kb.GetCoinbase()
 			assert.Nil(t, err)
@@ -594,7 +594,7 @@ func TestUnstakeNode8(t *testing.T) {
 func TestStakeNodeAfter8(t *testing.T) {
 	tt := []struct {
 		name           string
-		memoryNodeFn   func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		memoryNodeFn   func(t *testing.T, genesisState []byte, numOfNodes uint) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
 		outputIsSigner bool
 		*upgrades
 	}{
@@ -614,7 +614,7 @@ func TestStakeNodeAfter8(t *testing.T) {
 				isAfter8 = true
 			}
 			gen, vals := twoValTwoNodeGenesisState8()
-			_, kb, cleanup := tc.memoryNodeFn(t, gen)
+			_, kb, cleanup := tc.memoryNodeFn(t, gen, 1)
 			time.Sleep(1 * time.Second)
 			kp, err := kb.GetCoinbase()
 			signer := kp.GetAddress()
@@ -648,7 +648,7 @@ func TestStakeNodeAfter8(t *testing.T) {
 func TestEditStakeNode8(t *testing.T) {
 	tt := []struct {
 		name           string
-		memoryNodeFn   func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		memoryNodeFn   func(t *testing.T, genesisState []byte, numOfNodes uint) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
 		outputIsSigner bool
 		*upgrades
 	}{
@@ -673,7 +673,7 @@ func TestEditStakeNode8(t *testing.T) {
 			var newChains = []string{"2121"}
 			var newServiceURL = "https://newServiceUrl.com:8081"
 			gen, vals := twoValTwoNodeGenesisState8()
-			_, kb, cleanup := tc.memoryNodeFn(t, gen)
+			_, kb, cleanup := tc.memoryNodeFn(t, gen, 1)
 			time.Sleep(1 * time.Second)
 			kp, err := kb.GetCoinbase()
 			assert.Nil(t, err)
@@ -719,7 +719,7 @@ func TestEditStakeNode8(t *testing.T) {
 func TestSendTransaction(t *testing.T) {
 	tt := []struct {
 		name         string
-		memoryNodeFn func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		memoryNodeFn func(t *testing.T, genesisState []byte, numOfNodes uint) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
 		*upgrades
 	}{
 		{name: "send tx from an amino account with amino codec", memoryNodeFn: NewInMemoryTendermintNodeAmino, upgrades: &upgrades{codecUpgrade: codecUpgrade{false, 7000}}},
@@ -731,7 +731,7 @@ func TestSendTransaction(t *testing.T) {
 				codec.UpgradeHeight = tc.upgrades.codecUpgrade.height
 				_ = memCodecMod(tc.upgrades.codecUpgrade.upgradeMod)
 			}
-			_, kb, cleanup := tc.memoryNodeFn(t, oneAppTwoNodeGenesis())
+			_, kb, cleanup := tc.memoryNodeFn(t, oneAppTwoNodeGenesis(), 1)
 			time.Sleep(1 * time.Second)
 			cb, err := kb.GetCoinbase()
 			assert.Nil(t, err)
@@ -764,7 +764,7 @@ func TestSendTransaction(t *testing.T) {
 func TestDuplicateTxWithRawTx(t *testing.T) {
 	tt := []struct {
 		name         string
-		memoryNodeFn func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		memoryNodeFn func(t *testing.T, genesisState []byte, numOfNodes uint) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
 		*upgrades
 	}{
 		{name: "send duplicate tx from an amino account with amino codec", memoryNodeFn: NewInMemoryTendermintNodeAmino, upgrades: &upgrades{codecUpgrade: codecUpgrade{false, 7000}}},
@@ -776,7 +776,7 @@ func TestDuplicateTxWithRawTx(t *testing.T) {
 				codec.UpgradeHeight = tc.upgrades.codecUpgrade.height
 				_ = memCodecMod(tc.upgrades.codecUpgrade.upgradeMod)
 			}
-			_, kb, cleanup := tc.memoryNodeFn(t, oneAppTwoNodeGenesis())
+			_, kb, cleanup := tc.memoryNodeFn(t, oneAppTwoNodeGenesis(), 1)
 			time.Sleep(1 * time.Second)
 			cb, err := kb.GetCoinbase()
 			assert.Nil(t, err)
@@ -831,7 +831,7 @@ func TestDuplicateTxWithRawTx(t *testing.T) {
 func TestChangeParamsComplexTypeTx(t *testing.T) {
 	tt := []struct {
 		name         string
-		memoryNodeFn func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		memoryNodeFn func(t *testing.T, genesisState []byte, numOfNodes uint) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
 		*upgrades
 	}{
 		{name: "change complex type params from an amino account with amino codec", memoryNodeFn: NewInMemoryTendermintNodeAmino, upgrades: &upgrades{codecUpgrade: codecUpgrade{false, 7000}}},
@@ -844,7 +844,7 @@ func TestChangeParamsComplexTypeTx(t *testing.T) {
 				_ = memCodecMod(tc.upgrades.codecUpgrade.upgradeMod)
 			}
 			resetTestACL()
-			_, kb, cleanup := tc.memoryNodeFn(t, oneAppTwoNodeGenesis())
+			_, kb, cleanup := tc.memoryNodeFn(t, oneAppTwoNodeGenesis(), 1)
 			time.Sleep(1 * time.Second)
 			cb, err := kb.GetCoinbase()
 			assert.Nil(t, err)
@@ -877,7 +877,7 @@ func TestChangeParamsSimpleTx(t *testing.T) {
 
 	tt := []struct {
 		name         string
-		memoryNodeFn func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		memoryNodeFn func(t *testing.T, genesisState []byte, numOfNodes uint) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
 		*upgrades
 	}{
 		{name: "change complex type params from an amino account with amino codec", memoryNodeFn: NewInMemoryTendermintNodeAmino, upgrades: &upgrades{codecUpgrade: codecUpgrade{false, 7000}}},
@@ -890,7 +890,7 @@ func TestChangeParamsSimpleTx(t *testing.T) {
 				_ = memCodecMod(tc.upgrades.codecUpgrade.upgradeMod)
 			}
 			resetTestACL()
-			_, kb, cleanup := tc.memoryNodeFn(t, oneAppTwoNodeGenesis())
+			_, kb, cleanup := tc.memoryNodeFn(t, oneAppTwoNodeGenesis(), 1)
 			time.Sleep(1 * time.Second)
 			cb, err := kb.GetCoinbase()
 			assert.Nil(t, err)
@@ -918,7 +918,7 @@ func TestChangeParamsSimpleTx(t *testing.T) {
 func TestUpgrade(t *testing.T) {
 	tt := []struct {
 		name         string
-		memoryNodeFn func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		memoryNodeFn func(t *testing.T, genesisState []byte, numOfNodes uint) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
 		*upgrades
 	}{
 		{name: "change complex type params from an amino account with amino codec", memoryNodeFn: NewInMemoryTendermintNodeAmino, upgrades: &upgrades{codecUpgrade: codecUpgrade{false, 7000}}},
@@ -930,7 +930,7 @@ func TestUpgrade(t *testing.T) {
 				codec.UpgradeHeight = tc.upgrades.codecUpgrade.height
 				_ = memCodecMod(tc.upgrades.codecUpgrade.upgradeMod)
 			}
-			_, kb, cleanup := tc.memoryNodeFn(t, oneAppTwoNodeGenesis())
+			_, kb, cleanup := tc.memoryNodeFn(t, oneAppTwoNodeGenesis(), 1)
 			time.Sleep(1 * time.Second)
 			cb, err := kb.GetCoinbase()
 			assert.Nil(t, err)
@@ -959,7 +959,7 @@ func TestUpgrade(t *testing.T) {
 func TestDAOTransfer(t *testing.T) {
 	tt := []struct {
 		name         string
-		memoryNodeFn func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		memoryNodeFn func(t *testing.T, genesisState []byte, numOfNodes uint) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
 		*upgrades
 	}{
 		{name: "change complex type params from an amino account with amino codec", memoryNodeFn: NewInMemoryTendermintNodeAmino, upgrades: &upgrades{codecUpgrade: codecUpgrade{false, 7000}}},
@@ -971,7 +971,7 @@ func TestDAOTransfer(t *testing.T) {
 				codec.UpgradeHeight = tc.upgrades.codecUpgrade.height
 				_ = memCodecMod(tc.upgrades.codecUpgrade.upgradeMod)
 			}
-			_, kb, cleanup := tc.memoryNodeFn(t, oneAppTwoNodeGenesis())
+			_, kb, cleanup := tc.memoryNodeFn(t, oneAppTwoNodeGenesis(), 1)
 			time.Sleep(1 * time.Second)
 			cb, err := kb.GetCoinbase()
 			assert.Nil(t, err)
@@ -1000,11 +1000,11 @@ func TestClaimAminoTx(t *testing.T) {
 	}
 	tt := []struct {
 		name         string
-		memoryNodeFn func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		memoryNodeFn func(t *testing.T, genesisState []byte, numOfNodes uint) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
 		*upgrades
 	}{
-		{name: "claim tx from amino with amino codec ", memoryNodeFn: NewInMemoryTendermintNodeAmino, upgrades: &upgrades{codecUpgrade: codecUpgrade{false, 7000}}},
-		//{name: "claim tx from a proto with proto codec", memoryNodeFn: NewInMemoryTendermintNodeProto, upgrades: &upgrades{codecUpgrade: codecUpgrade{true, 4}}},
+		//{name: "claim tx from amino with amino codec ", memoryNodeFn: NewInMemoryTendermintNodeAmino, upgrades: &upgrades{codecUpgrade: codecUpgrade{false, 7000}}},
+		{name: "claim tx from a proto with proto codec", memoryNodeFn: NewInMemoryTendermintNodeProto, upgrades: &upgrades{codecUpgrade: codecUpgrade{true, 4}}},
 	}
 
 	for _, tc := range tt {
@@ -1015,7 +1015,7 @@ func TestClaimAminoTx(t *testing.T) {
 			}
 			genBz, _, validators, app := fiveValidatorsOneAppGenesis()
 			kb := getInMemoryKeybase()
-			_, _, cleanup := tc.memoryNodeFn(t, genBz)
+			_, _, cleanup := tc.memoryNodeFn(t, genBz, 1)
 			time.Sleep(1 * time.Second)
 			for i := 0; i < 5; i++ {
 				appPrivateKey, err := kb.ExportPrivateKeyObject(app.Address, "test")
@@ -1076,7 +1076,7 @@ func TestClaimProtoTx(t *testing.T) {
 	}
 	tt := []struct {
 		name         string
-		memoryNodeFn func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		memoryNodeFn func(t *testing.T, genesisState []byte, numOfNodes uint) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
 		*upgrades
 	}{
 		//{name: "claim tx from amino with amino codec ", memoryNodeFn: NewInMemoryTendermintNodeAmino, upgrades: &upgrades{codecUpgrade: codecUpgrade{false, 7000}}},
@@ -1090,7 +1090,7 @@ func TestClaimProtoTx(t *testing.T) {
 			}
 			genBz, _, validators, app := fiveValidatorsOneAppGenesis()
 			kb := getInMemoryKeybase()
-			_, _, cleanup := tc.memoryNodeFn(t, genBz)
+			_, _, cleanup := tc.memoryNodeFn(t, genBz, 1)
 			time.Sleep(1 * time.Second)
 			for i := 0; i < 5; i++ {
 				appPrivateKey, err := kb.ExportPrivateKeyObject(app.Address, "test")
@@ -1151,7 +1151,7 @@ func TestAminoClaimTxChallenge(t *testing.T) {
 	}
 	tt := []struct {
 		name         string
-		memoryNodeFn func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		memoryNodeFn func(t *testing.T, genesisState []byte, numOfNodes uint) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
 		*upgrades
 	}{
 		{name: "challenge a claim tx from amino with amino codec ", memoryNodeFn: NewInMemoryTendermintNodeAmino, upgrades: &upgrades{codecUpgrade: codecUpgrade{false, 7000}}},
@@ -1161,7 +1161,7 @@ func TestAminoClaimTxChallenge(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			genBz, keys, _, _ := fiveValidatorsOneAppGenesis()
 			challenges := NewValidChallengeProof(t, keys, 5)
-			_, _, cleanup := tc.memoryNodeFn(t, genBz)
+			_, _, cleanup := tc.memoryNodeFn(t, genBz, 1)
 			for _, c := range challenges {
 				c.Store(sdk.NewInt(1000000), pocketTypes.GlobalEvidenceCache)
 			}
@@ -1188,7 +1188,7 @@ func TestProtoClaimTxChallenge(t *testing.T) {
 	}
 	tt := []struct {
 		name         string
-		memoryNodeFn func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		memoryNodeFn func(t *testing.T, genesisState []byte, numOfNodes uint) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
 		*upgrades
 	}{
 		//{name: "challenge a claim tx from amino with amino codec ", memoryNodeFn: NewInMemoryTendermintNodeAmino, upgrades: &upgrades{codecUpgrade: codecUpgrade{false, 7000}}},
@@ -1198,7 +1198,7 @@ func TestProtoClaimTxChallenge(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			genBz, keys, _, _ := fiveValidatorsOneAppGenesis()
 			challenges := NewValidChallengeProof(t, keys, 5)
-			_, _, cleanup := tc.memoryNodeFn(t, genBz)
+			_, _, cleanup := tc.memoryNodeFn(t, genBz, 1)
 			for _, c := range challenges {
 				c.Store(sdk.NewInt(1000000), pocketTypes.GlobalEvidenceCache)
 			}

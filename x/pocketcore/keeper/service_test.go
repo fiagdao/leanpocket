@@ -14,7 +14,7 @@ import (
 
 func TestKeeper_HandleRelay(t *testing.T) {
 	ethereum := hex.EncodeToString([]byte{01})
-	ctx, _, _, _, keeper, keys, kb := createTestInput(t, false)
+	ctx, _, _, _, keeper, keys, kb := createTestInput(t, false, 1)
 	mockCtx := new(Ctx)
 	ak := keeper.appKeeper.(appsKeeper.Keeper)
 	clientPrivateKey := getRandomPrivateKey()

@@ -18,7 +18,7 @@ func TestKeeper_GetHostedBlockchains(t *testing.T) {
 		ID:  bitcoin,
 		URL: "https://www.google.com:443",
 	}
-	_, _, _, _, keeper, _, _ := createTestInput(t, false)
+	_, _, _, _, keeper, _, _ := createTestInput(t, false, 1)
 	hb := keeper.GetHostedBlockchains()
 	assert.NotNil(t, hb)
 	assert.True(t, hb.Contains(eth.ID))

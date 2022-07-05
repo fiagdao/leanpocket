@@ -60,9 +60,9 @@ type codecUpgrade struct {
 	//after8     bool
 }
 
-func NewInMemoryTendermintNodeAmino(t *testing.T, genesisState []byte) (tendermintNode *node.Node, keybase keys.Keybase, cleanup func()) {
+func NewInMemoryTendermintNodeAmino(t *testing.T, genesisState []byte, numOfNodes uint) (tendermintNode *node.Node, keybase keys.Keybase, cleanup func()) {
 	// create the in memory tendermint node and keybase
-	tendermintNode, keybase = inMemTendermintNode(genesisState)
+	tendermintNode, keybase = inMemTendermintNode(genesisState, numOfNodes)
 	// test assertions
 	if tendermintNode == nil {
 		panic("tendermintNode should not be nil")
@@ -75,7 +75,7 @@ func NewInMemoryTendermintNodeAmino(t *testing.T, genesisState []byte) (tendermi
 	// init cache in memory
 	pocketTypes.InitConfig(&pocketTypes.HostedBlockchains{
 		M: make(map[string]pocketTypes.HostedBlockchain),
-	}, tendermintNode.Logger, sdk.DefaultTestingPocketConfig())
+	}, tendermintNode.Logger, sdk.DefaultTestingPocketConfig(numOfNodes > 1))
 	// start the in memory node
 	err := tendermintNode.Start()
 	if err != nil {
@@ -89,8 +89,7 @@ func NewInMemoryTendermintNodeAmino(t *testing.T, genesisState []byte) (tendermi
 		if err != nil {
 			panic(err)
 		}
-		pocketTypes.ClearEvidence(pocketTypes.GlobalEvidenceCache)
-		pocketTypes.ClearSessionCache(pocketTypes.GlobalSessionCache)
+		pocketTypes.CleanPocketNodes()
 		PCA = nil
 		inMemKB = nil
 		err := inMemDB.Close()
@@ -110,9 +109,9 @@ func NewInMemoryTendermintNodeAmino(t *testing.T, genesisState []byte) (tendermi
 	}
 	return
 }
-func NewInMemoryTendermintNodeProto(t *testing.T, genesisState []byte) (tendermintNode *node.Node, keybase keys.Keybase, cleanup func()) {
+func NewInMemoryTendermintNodeProto(t *testing.T, genesisState []byte, numOfNodes uint) (tendermintNode *node.Node, keybase keys.Keybase, cleanup func()) {
 	// create the in memory tendermint node and keybase
-	tendermintNode, keybase = inMemTendermintNode(genesisState, 1)
+	tendermintNode, keybase = inMemTendermintNode(genesisState, numOfNodes)
 	// test assertions
 	if tendermintNode == nil {
 		panic("tendermintNode should not be nil")
@@ -126,7 +125,7 @@ func NewInMemoryTendermintNodeProto(t *testing.T, genesisState []byte) (tendermi
 	// init cache in memory
 	pocketTypes.InitConfig(&pocketTypes.HostedBlockchains{
 		M: make(map[string]pocketTypes.HostedBlockchain),
-	}, tendermintNode.Logger, sdk.DefaultTestingPocketConfig())
+	}, tendermintNode.Logger, sdk.DefaultTestingPocketConfig(numOfNodes > 1))
 	// start the in memory node
 	err := tendermintNode.Start()
 	if err != nil {
@@ -165,11 +164,11 @@ func NewInMemoryTendermintNodeProto(t *testing.T, genesisState []byte) (tendermi
 }
 
 func TestNewInMemoryAmino(t *testing.T) {
-	_, _, cleanup := NewInMemoryTendermintNodeAmino(t, oneAppTwoNodeGenesis())
+	_, _, cleanup := NewInMemoryTendermintNodeAmino(t, oneAppTwoNodeGenesis(), 1)
 	defer cleanup()
 }
 func TestNewInMemoryProto(t *testing.T) {
-	_, _, cleanup := NewInMemoryTendermintNodeProto(t, oneAppTwoNodeGenesis())
+	_, _, cleanup := NewInMemoryTendermintNodeProto(t, oneAppTwoNodeGenesis(), 1)
 	defer cleanup()
 }
 
@@ -245,12 +244,18 @@ func inMemTendermintNode(genesisState []byte, numOfNodes uint) (*node.Node, keys
 		panic(err)
 	}
 	nodeKey := p2p.NodeKey{PrivKey: pk}
-	privVal := privval.GenFilePV(c.TmConfig.PrivValidatorKey, c.TmConfig.PrivValidatorState)
-	privVal.Key[0].PrivKey = pk
-	privVal.Key[0].PubKey = pk.PubKey()
-	privVal.Key[0].Address = pk.PubKey().Address()
+	privVals := privval.GenFilePVs(c.TmConfig.PrivValidatorKey, c.TmConfig.PrivValidatorState, numOfNodes)
 	pocketTypes.CleanPocketNodes()
-	pocketTypes.AddPocketNodeByFilePVKey(privVal.Key[0], c.Logger)
+	if numOfNodes == 1 {
+		privVals.Key[0].PrivKey = pk
+		privVals.Key[0].PubKey = pk.PubKey()
+		privVals.Key[0].Address = pk.PubKey().Address()
+		pocketTypes.AddPocketNodeByFilePVKey(privVals.Key[0], c.Logger)
+	} else {
+		for _, val := range privVals.Key {
+			pocketTypes.AddPocketNodeByFilePVKey(val, c.Logger)
+		}
+	}
 
 	dbProvider := func(*node.DBContext) (dbm.DB, error) {
 		return db, nil
@@ -260,7 +265,7 @@ func inMemTendermintNode(genesisState []byte, numOfNodes uint) (*node.Node, keys
 	tmNode, err := node.NewNode(app.BaseApp,
 		c.TmConfig,
 		0,
-		privVal,
+		privVals,
 		&nodeKey,
 		proxy.NewLocalClientCreator(app),
 		sdk.NewTransactionIndexer(txDB),

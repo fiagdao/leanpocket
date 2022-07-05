@@ -48,11 +48,11 @@ import (
 
 var FS = string(fp.Separator)
 
-func NewInMemoryTendermintNode(t *testing.T, genesisState []byte) (tendermintNode *node.Node, keybase keys.Keybase, cleanup func()) {
+func NewInMemoryTendermintNode(t *testing.T, genesisState []byte, numOfNodes uint) (tendermintNode *node.Node, keybase keys.Keybase, cleanup func()) {
 	sdk.VbCCache = sdk.NewCache(1)
 	app.MakeCodec() // needed for queries and tx
 	// create the in memory tendermint node and keybase
-	tendermintNode, keybase = inMemTendermintNode(genesisState)
+	tendermintNode, keybase = inMemTendermintNode(genesisState, numOfNodes)
 	// test assertions
 	if tendermintNode == nil {
 		panic("tendermintNode should not be nil")
@@ -67,7 +67,7 @@ func NewInMemoryTendermintNode(t *testing.T, genesisState []byte) (tendermintNod
 	// init cache in memory
 	pocketTypes.InitConfig(&pocketTypes.HostedBlockchains{
 		M: make(map[string]pocketTypes.HostedBlockchain),
-	}, tendermintNode.Logger, sdk.DefaultTestingPocketConfig())
+	}, tendermintNode.Logger, sdk.DefaultTestingPocketConfig(numOfNodes > 1))
 	// start the in memory node
 	err := tendermintNode.Start()
 	// assert that it is not nil
@@ -94,7 +94,7 @@ func NewInMemoryTendermintNode(t *testing.T, genesisState []byte) (tendermintNod
 }
 
 func TestNewInMemory(t *testing.T) {
-	_, _, cleanup := NewInMemoryTendermintNode(t, oneValTwoNodeGenesisState())
+	_, _, cleanup := NewInMemoryTendermintNode(t, oneValTwoNodeGenesisState(), 1)
 	defer cleanup()
 }
 
@@ -126,7 +126,7 @@ func getInMemoryKeybase() keys.Keybase {
 	return inMemKB
 }
 
-func inMemTendermintNode(genesisState []byte) (*node.Node, keys.Keybase) {
+func inMemTendermintNode(genesisState []byte, numOfNodes uint) (*node.Node, keys.Keybase) {
 	kb := getInMemoryKeybase()
 	cb, err := kb.GetCoinbase()
 	if err != nil {
@@ -165,12 +165,19 @@ func inMemTendermintNode(genesisState []byte) (*node.Node, keys.Keybase) {
 	}
 	db := dbm.NewMemDB()
 	nodeKey := p2p.NodeKey{PrivKey: pk}
-	privVal := privval.GenFilePV(c.TmConfig.PrivValidatorKey, c.TmConfig.PrivValidatorState)
-	privVal.Key[0].PrivKey = pk
-	privVal.Key[0].PubKey = pk.PubKey()
-	privVal.Key[0].Address = pk.PubKey().Address()
+	privVals := privval.GenFilePVs(c.TmConfig.PrivValidatorKey, c.TmConfig.PrivValidatorState, numOfNodes)
 	pocketTypes.CleanPocketNodes()
-	pocketTypes.AddPocketNodeByFilePVKey(privVal.Key[0], c.Logger)
+
+	if numOfNodes == 1 {
+		privVals.Key[0].PrivKey = pk
+		privVals.Key[0].PubKey = pk.PubKey()
+		privVals.Key[0].Address = pk.PubKey().Address()
+		pocketTypes.AddPocketNodeByFilePVKey(privVals.Key[0], c.Logger)
+	} else {
+		for _, val := range privVals.Key {
+			pocketTypes.AddPocketNodeByFilePVKey(val, c.Logger)
+		}
+	}
 
 	creator := func(logger log.Logger, db dbm.DB, _ io.Writer) *app.PocketCoreApp {
 		m := map[string]pocketTypes.HostedBlockchain{sdk.PlaceholderHash: {
@@ -189,7 +196,7 @@ func inMemTendermintNode(genesisState []byte) (*node.Node, keys.Keybase) {
 	tmNode, err := node.NewNode(baseapp,
 		c.TmConfig,
 		0,
-		privVal,
+		privVals,
 		&nodeKey,
 		proxy.NewLocalClientCreator(baseapp),
 		sdk.NewTransactionIndexer(txDB),

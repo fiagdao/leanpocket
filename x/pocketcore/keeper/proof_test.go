@@ -14,7 +14,7 @@ import (
 )
 
 func TestKeeper_ValidateProof(t *testing.T) { // happy path only todo
-	ctx, _, _, _, keeper, keys, _ := createTestInput(t, false)
+	ctx, _, _, _, keeper, keys, _ := createTestInput(t, false, 1)
 	types.ClearEvidence(types.GlobalEvidenceCache)
 	npk, header, _ := simulateRelays(t, keeper, &ctx, 5)
 	evidence, err := types.GetEvidence(header, types.RelayEvidence, sdk.NewInt(1000), types.GlobalEvidenceCache)
@@ -68,7 +68,7 @@ func TestKeeper_ValidateProof(t *testing.T) { // happy path only todo
 func TestKeeper_GetPsuedorandomIndex(t *testing.T) {
 	var totalRelays = []int{10, 100, 10000000}
 	for _, relays := range totalRelays {
-		ctx, _, _, _, keeper, keys, _ := createTestInput(t, false)
+		ctx, _, _, _, keeper, keys, _ := createTestInput(t, false, 1)
 		header := types.SessionHeader{
 			ApplicationPubKey:  "asdlfj",
 			Chain:              "lkajsdf",

@@ -115,33 +115,33 @@ func DefaultConfig(dataDir string) Config {
 	c := Config{
 		TendermintConfig: *config.DefaultConfig(),
 		PocketConfig: PocketConfig{
-			DataDir:                  dataDir,
-			GenesisName:              DefaultGenesisName, 
-			ChainsName:               DefaultChainsName,
-			EvidenceDBName:           DefaultEvidenceDBName,
-			TendermintURI:            DefaultTMURI,
-			KeybaseName:              DefaultKeybaseName,
-			RPCPort:                  DefaultRPCPort,
-			ClientBlockSyncAllowance: DefaultClientBlockSyncAllowance,
-			MaxEvidenceCacheEntires:  DefaultMaxEvidenceCacheEntries,
-			MaxSessionCacheEntries:   DefaultMaxSessionCacheEntries,
-			JSONSortRelayResponses:   DefaultJSONSortRelayResponses,
-			RemoteCLIURL:             DefaultRemoteCLIURL,
-			UserAgent:                DefaultUserAgent,
-			ValidatorCacheSize:       DefaultValidatorCacheSize,
-			ApplicationCacheSize:     DefaultApplicationCacheSize,
-			RPCTimeout:               DefaultRPCTimeout,
-			PrometheusAddr:           DefaultPocketPrometheusListenAddr,
-			PrometheusMaxOpenfiles:   DefaultPrometheusMaxOpenFile,
-			MaxClaimAgeForProofRetry: DefaultMaxClaimProofRetryAge,
-			ProofPrevalidation:       DefaultProofPrevalidation,
-			CtxCacheSize:             DefaultCtxCacheSize,
-			ABCILogging:              DefaultABCILogging,
-			RelayErrors:              DefaultRelayErrors,
-			DisableTxEvents:          DefaultRPCDisableTransactionEvents,
-			IavlCacheSize:            DefaultIavlCacheSize,
-			ChainsHotReload:          DefaultChainHotReload,
-			LeanPocket:               DefaultLeanPocket,
+			DataDir:                   dataDir,
+			GenesisName:               DefaultGenesisName,
+			ChainsName:                DefaultChainsName,
+			EvidenceDBName:            DefaultEvidenceDBName,
+			TendermintURI:             DefaultTMURI,
+			KeybaseName:               DefaultKeybaseName,
+			RPCPort:                   DefaultRPCPort,
+			ClientBlockSyncAllowance:  DefaultClientBlockSyncAllowance,
+			MaxEvidenceCacheEntires:   DefaultMaxEvidenceCacheEntries,
+			MaxSessionCacheEntries:    DefaultMaxSessionCacheEntries,
+			JSONSortRelayResponses:    DefaultJSONSortRelayResponses,
+			RemoteCLIURL:              DefaultRemoteCLIURL,
+			UserAgent:                 DefaultUserAgent,
+			ValidatorCacheSize:        DefaultValidatorCacheSize,
+			ApplicationCacheSize:      DefaultApplicationCacheSize,
+			RPCTimeout:                DefaultRPCTimeout,
+			PrometheusAddr:            DefaultPocketPrometheusListenAddr,
+			PrometheusMaxOpenfiles:    DefaultPrometheusMaxOpenFile,
+			MaxClaimAgeForProofRetry:  DefaultMaxClaimProofRetryAge,
+			ProofPrevalidation:        DefaultProofPrevalidation,
+			CtxCacheSize:              DefaultCtxCacheSize,
+			ABCILogging:               DefaultABCILogging,
+			RelayErrors:               DefaultRelayErrors,
+			DisableTxEvents:           DefaultRPCDisableTransactionEvents,
+			IavlCacheSize:             DefaultIavlCacheSize,
+			ChainsHotReload:           DefaultChainHotReload,
+			LeanPocket:                DefaultLeanPocket,
 			LeanPocketUserKeyFileName: DefaultLeanPocketUserKeyFileName,
 		},
 	}
@@ -184,10 +184,12 @@ func DefaultPocketConsensusConfig(cconfig *config.ConsensusConfig) {
 	cconfig.PeerQueryMaj23SleepDuration = 20000000000
 }
 
-func DefaultTestingPocketConfig() Config {
+// DefaultTestingPocketConfig numOfNodes determines if multiple nodes should be supported or not (leanpokt)
+func DefaultTestingPocketConfig(leanPocket bool) Config {
 	c := DefaultConfig("data")
 	c.PocketConfig.MaxClaimAgeForProofRetry = 1000
 	t := config.TestConfig()
+	c.PocketConfig.LeanPocket = leanPocket
 	t.LevelDBOptions = config.DefaultLevelDBOpts()
 	return Config{
 		TendermintConfig: *t,

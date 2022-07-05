@@ -9,7 +9,7 @@ import (
 )
 
 func TestQuerySupportedBlockchains(t *testing.T) {
-	ctx, _, _, _, k, _, _ := createTestInput(t, false)
+	ctx, _, _, _, k, _, _ := createTestInput(t, false, 1)
 	p := types.Params{
 		SupportedBlockchains: []string{"ethereum"},
 	}
@@ -23,7 +23,7 @@ func TestQuerySupportedBlockchains(t *testing.T) {
 }
 
 func TestQueryParameters(t *testing.T) {
-	ctx, _, _, _, k, _, _ := createTestInput(t, false)
+	ctx, _, _, _, k, _, _ := createTestInput(t, false, 1)
 	p := types.Params{
 		SupportedBlockchains: []string{"ethereum"},
 	}

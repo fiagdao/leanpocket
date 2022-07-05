@@ -9,7 +9,7 @@ import (
 )
 
 func TestKeeper_Dispatch(t *testing.T) {
-	ctx, _, _, _, keeper, keys, _ := createTestInput(t, false)
+	ctx, _, _, _, keeper, keys, _ := createTestInput(t, false, 1)
 	appPrivateKey := getRandomPrivateKey()
 	appPubKey := appPrivateKey.PublicKey().RawString()
 	ethereum := hex.EncodeToString([]byte{01})
@@ -45,12 +45,12 @@ func TestKeeper_Dispatch(t *testing.T) {
 }
 
 func TestKeeper_IsSessionBlock(t *testing.T) {
-	notSessionContext, _, _, _, keeper, _, _ := createTestInput(t, false)
+	notSessionContext, _, _, _, keeper, _, _ := createTestInput(t, false, 1)
 	assert.False(t, keeper.IsSessionBlock(notSessionContext.WithBlockHeight(977)))
 }
 
 func TestKeeper_IsPocketSupportedBlockchain(t *testing.T) {
-	ctx, _, _, _, keeper, _, _ := createTestInput(t, false)
+	ctx, _, _, _, keeper, _, _ := createTestInput(t, false, 1)
 	sb := []string{"ethereum"}
 	notSB := "bitcoin"
 	p := types.Params{
