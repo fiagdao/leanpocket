@@ -89,8 +89,15 @@ func (k Keeper) HandleRelay(ctx sdk.Ctx, relay pc.Relay) (*pc.RelayResponse, sdk
 	// track the relay time
 	relayTime := time.Since(relayTimeStart)
 	// add to metrics
-	pc.GlobalServiceMetric().AddRelayTimingFor(relay.Proof.Blockchain, float64(relayTime.Milliseconds()), &nodeAddress)
-	pc.GlobalServiceMetric().AddRelayFor(relay.Proof.Blockchain, &nodeAddress)
+	addRelayMetricsFunc := func() {
+		pc.GlobalServiceMetric().AddRelayTimingFor(relay.Proof.Blockchain, float64(relayTime.Milliseconds()), &nodeAddress)
+		pc.GlobalServiceMetric().AddRelayFor(relay.Proof.Blockchain, &nodeAddress)
+	}
+	if pc.GlobalPocketConfig.LeanPocket {
+		go addRelayMetricsFunc()
+	} else {
+		addRelayMetricsFunc()
+	}
 	return resp, nil
 }
 
@@ -163,6 +170,12 @@ func (k Keeper) HandleChallenge(ctx sdk.Ctx, challenge pc.ChallengeProofInvalidD
 	// store the challenge in memory
 	challenge.Store(app.GetMaxRelays(), node.EvidenceStore)
 	// update metric
-	pc.GlobalServiceMetric().AddChallengeFor(header.Chain, &nodeAddress)
+
+	if pc.GlobalPocketConfig.LeanPocket {
+		go pc.GlobalServiceMetric().AddChallengeFor(header.Chain, &nodeAddress)
+	} else {
+		pc.GlobalServiceMetric().AddChallengeFor(header.Chain, &nodeAddress)
+	}
+
 	return &pc.ChallengeResponse{Response: fmt.Sprintf("successfully stored challenge proof for %s", challenge.MinorityResponse.Proof.ServicerPubKey)}, nil
 }

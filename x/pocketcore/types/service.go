@@ -111,15 +111,21 @@ func (r *Relay) Validate(ctx sdk.Ctx, posKeeper PosKeeper, appsKeeper AppsKeeper
 	return maxPossibleRelays, nil
 }
 
+func addServiceMetricErrorFor(blockchain string, address *sdk.Address) {
+	if GlobalPocketConfig.LeanPocket {
+		go GlobalServiceMetric().AddErrorFor(blockchain, address)
+	} else {
+		GlobalServiceMetric().AddErrorFor(blockchain, address)
+	}
+}
+
 // "Execute" - Attempts to do a request on the non-native blockchain specified
 func (r Relay) Execute(hostedBlockchains *HostedBlockchains, address *sdk.Address) (string, sdk.Error) {
-
-	//time := time.Now()
 	// retrieve the hosted blockchain url requested
 	chain, err := hostedBlockchains.GetChain(r.Proof.Blockchain)
 	if err != nil {
 		// metric track
-		GlobalServiceMetric().AddErrorFor(r.Proof.Blockchain, address)
+		addServiceMetricErrorFor(r.Proof.Blockchain, address)
 		return "", err
 	}
 	url := strings.Trim(chain.URL, `/`)
@@ -130,7 +136,7 @@ func (r Relay) Execute(hostedBlockchains *HostedBlockchains, address *sdk.Addres
 	res, er := executeHTTPRequest(r.Payload.Data, url, GlobalPocketConfig.UserAgent, chain.BasicAuth, r.Payload.Method, r.Payload.Headers)
 	if er != nil {
 		// metric track
-		GlobalServiceMetric().AddErrorFor(r.Proof.Blockchain, address)
+		addServiceMetricErrorFor(r.Proof.Blockchain, address)
 		return res, NewHTTPExecutionError(ModuleName, er)
 	}
 	return res, nil

@@ -112,7 +112,7 @@ func NewInMemoryTendermintNodeAmino(t *testing.T, genesisState []byte) (tendermi
 }
 func NewInMemoryTendermintNodeProto(t *testing.T, genesisState []byte) (tendermintNode *node.Node, keybase keys.Keybase, cleanup func()) {
 	// create the in memory tendermint node and keybase
-	tendermintNode, keybase = inMemTendermintNode(genesisState)
+	tendermintNode, keybase = inMemTendermintNode(genesisState, 1)
 	// test assertions
 	if tendermintNode == nil {
 		panic("tendermintNode should not be nil")
@@ -202,7 +202,7 @@ func getInMemoryDB() dbm.DB {
 	return inMemDB
 }
 
-func inMemTendermintNode(genesisState []byte) (*node.Node, keys.Keybase) {
+func inMemTendermintNode(genesisState []byte, numOfNodes uint) (*node.Node, keys.Keybase) {
 	kb := getInMemoryKeybase()
 	cb, err := kb.GetCoinbase()
 	if err != nil {

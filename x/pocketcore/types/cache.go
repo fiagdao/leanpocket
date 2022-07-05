@@ -315,7 +315,14 @@ func GetEvidence(header SessionHeader, evidenceType EvidenceType, max sdk.BigInt
 	if !found {
 		bloomFilter := bloom.NewWithEstimates(uint(sdk.NewUintFromBigInt(max.BigInt()).Uint64()), .01)
 		// add to metric
-		GlobalServiceMetric().AddSessionFor(header.Chain, nil)
+		addSessionMetricFunc := func() {
+			GlobalServiceMetric().AddSessionFor(header.Chain, nil)
+		}
+		if GlobalPocketConfig.LeanPocket {
+			go addSessionMetricFunc()
+		} else {
+			addSessionMetricFunc()
+		}
 		return Evidence{
 			Bloom:         *bloomFilter,
 			SessionHeader: header,
