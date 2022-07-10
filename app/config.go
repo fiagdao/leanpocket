@@ -91,8 +91,9 @@ func InitApp(datadir, tmNode, persistentPeers, seeds, remoteCLIURL string, keyba
 	}
 	// create logger
 	logger := InitLogger()
-	// init cache
-	InitPocketCoreConfig(chains, logger)
+
+	// init key files
+	InitKeyfiles(logger)
 
 	// prestart hook, so users don't have to create their own set-validator prestart script
 	if GlobalConfig.PocketConfig.LeanPocket {
@@ -114,7 +115,8 @@ func InitApp(datadir, tmNode, persistentPeers, seeds, remoteCLIURL string, keyba
 		}
 	}
 
-	InitKeyfiles(logger)
+	// init configs & evidence/session caches
+	InitPocketCoreConfig(chains, logger)
 
 	// init genesis
 	InitGenesis(genesisType, logger)
