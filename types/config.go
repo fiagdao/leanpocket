@@ -3,6 +3,8 @@ package types
 import (
 	"github.com/tendermint/tendermint/config"
 	db "github.com/tendermint/tm-db"
+	"path"
+
 	"sync"
 	"time"
 )
@@ -44,6 +46,13 @@ type PocketConfig struct {
 	Cache                    bool   `json:"-"`
 	IavlCacheSize            int64  `json:"iavl_cache_size"`
 	ChainsHotReload          bool   `json:"chains_hot_reload"`
+	GenerateTokenOnStart     bool   `json:"generate_token_on_start"`
+	LeanPocket                bool   `json:"lean_pocket"`
+	LeanPocketUserKeyFileName string `json:"lean_pocket_user_key_file"`
+}
+
+func (c PocketConfig) GetLeanPocketUserKeyFilePath() string {
+	return path.Join(c.DataDir, c.LeanPocketUserKeyFileName)
 }
 
 type Config struct {
@@ -61,6 +70,9 @@ const (
 	DefaultKeybaseName                 = "pocket-keybase"
 	DefaultPVKName                     = "priv_val_key.json"
 	DefaultPVSName                     = "priv_val_state.json"
+	DefaultPVKNameLean                 = "priv_val_key_lean.json"
+	DefaultPVSNameLean                 = "priv_val_state_lean.json"
+	DefaultNKNameLean                  = "node_key_lean.json"
 	DefaultNKName                      = "node_key.json"
 	DefaultChainsName                  = "chains.json"
 	DefaultGenesisName                 = "genesis.json"
@@ -97,6 +109,9 @@ const (
 	AuthFileName                       = "auth.json"
 	DefaultIavlCacheSize               = 5000000
 	DefaultChainHotReload              = false
+	DefaultGenerateTokenOnStart        = true
+	DefaultLeanPocket                  = false
+	DefaultLeanPocketUserKeyFileName   = "lean_nodes_keys.json"
 )
 
 func DefaultConfig(dataDir string) Config {
@@ -129,6 +144,9 @@ func DefaultConfig(dataDir string) Config {
 			DisableTxEvents:          DefaultRPCDisableTransactionEvents,
 			IavlCacheSize:            DefaultIavlCacheSize,
 			ChainsHotReload:          DefaultChainHotReload,
+			GenerateTokenOnStart:     DefaultGenerateTokenOnStart,
+			LeanPocket:                DefaultLeanPocket,
+			LeanPocketUserKeyFileName: DefaultLeanPocketUserKeyFileName,
 		},
 	}
 	c.TendermintConfig.LevelDBOptions = config.DefaultLevelDBOpts()

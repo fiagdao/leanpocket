@@ -158,6 +158,16 @@ func (app PocketCoreApp) QueryAccount(addr string, height int64) (res *exported.
 	return &acc, nil
 }
 
+func (app PocketCoreApp) QueryAccounts(height int64, page, perPage int) (res Page, err error) {
+	ctx, err := app.NewContext(height)
+	if err != nil {
+		return
+	}
+	page, perPage = checkPagination(page, perPage)
+	accs := app.accountKeeper.GetAllAccountsExport(ctx)
+	return paginate(page, perPage, accs, 10000)
+}
+
 func (app PocketCoreApp) QueryNodes(height int64, opts nodesTypes.QueryValidatorsParams) (res Page, err error) {
 	ctx, err := app.NewContext(height)
 	if err != nil {
@@ -512,17 +522,20 @@ func (app PocketCoreApp) HandleDispatch(header pocketTypes.SessionHeader) (res *
 
 func (app PocketCoreApp) HandleRelay(r pocketTypes.Relay) (res *pocketTypes.RelayResponse, dispatch *pocketTypes.DispatchResponse, err error) {
 	ctx, err := app.NewContext(app.LastBlockHeight())
+
 	if err != nil {
 		return nil, nil, err
 	}
 
-	status, err := app.pocketKeeper.TmNode.Status()
-	if err != nil {
-		return nil, nil, fmt.Errorf("pocket node is unable to retrieve status from tendermint node, cannot service in this state")
+	status, sErr := app.pocketKeeper.TmNode.ConsensusReactorStatus()
+	if sErr != nil {
+		return nil, nil, fmt.Errorf("pocket node is unable to retrieve synced status from tendermint node, cannot service in this state")
 	}
-	if status.SyncInfo.CatchingUp {
+
+	if status.IsCatchingUp {
 		return nil, nil, fmt.Errorf("pocket node is currently syncing to the blockchain, cannot service in this state")
 	}
+
 	res, err = app.pocketKeeper.HandleRelay(ctx, r)
 	var err1 error
 	if err != nil && pocketTypes.ErrorWarrantsDispatch(err) {

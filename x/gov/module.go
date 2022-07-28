@@ -14,6 +14,7 @@ import (
 )
 
 var (
+	_ module.AppModule      = AppModule{}
 	_ module.AppModuleBasic = AppModuleBasic{}
 )
 
@@ -44,6 +45,10 @@ func (AppModuleBasic) ValidateGenesis(_ json.RawMessage) error { return nil }
 type AppModule struct {
 	AppModuleBasic
 	keeper keeper.Keeper
+}
+
+func (am AppModule) ConsensusParamsUpdate(ctx sdk.Ctx) *abci.ConsensusParams {
+	return &abci.ConsensusParams{}
 }
 
 // NewAppModule creates a new AppModule object
@@ -112,6 +117,26 @@ func (am AppModule) ExportGenesis(ctx sdk.Ctx) json.RawMessage {
 
 // module begin-block
 func (am AppModule) BeginBlock(ctx sdk.Ctx, req abci.RequestBeginBlock) {
+
+	if am.keeper.GetCodec().IsOnNamedFeatureActivationHeight(ctx.BlockHeight(), codec.BlockSizeModifyKey) {
+		gParams := am.keeper.GetParams(ctx)
+		//on the height we get the ACL and insert the key
+		gParams.ACL.SetOwner("pocketcore/BlockByteSize", am.keeper.GetDAOOwner(ctx))
+		//update params
+		am.keeper.SetParams(ctx, gParams)
+	}
+	
+	if am.keeper.GetCodec().IsOnNamedFeatureActivationHeight(ctx.BlockHeight(), codec.RSCALKey) {
+		params := am.keeper.GetParams(ctx)
+		//on the height we get the ACL and insert the key
+		params.ACL.SetOwner("pos/ServicerStakeFloorMultiplier", am.keeper.GetDAOOwner(ctx))
+		params.ACL.SetOwner("pos/ServicerStakeWeightMultiplier", am.keeper.GetDAOOwner(ctx))
+		params.ACL.SetOwner("pos/ServicerStakeWeightCeiling", am.keeper.GetDAOOwner(ctx))
+		params.ACL.SetOwner("pos/ServicerStakeFloorMultiplierExponent", am.keeper.GetDAOOwner(ctx))
+		//update params
+		am.keeper.SetParams(ctx, params)
+	}
+
 	u := am.keeper.GetUpgrade(ctx)
 	if ctx.AppVersion() < u.Version && ctx.BlockHeight() >= u.UpgradeHeight() && ctx.BlockHeight() != 0 {
 		ctx.Logger().Error("MUST UPGRADE TO NEXT VERSION: ", u.Version)

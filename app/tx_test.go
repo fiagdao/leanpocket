@@ -26,8 +26,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	pocketTypes.ClearSessionCache()
-	pocketTypes.ClearEvidence()
+	pocketTypes.CleanPocketNodes()
 	sdk.InitCtxCache(1)
 	m.Run()
 }
@@ -915,6 +914,99 @@ func TestChangeParamsSimpleTx(t *testing.T) {
 	}
 }
 
+func TestChangeParamsMaxBlocksizeBeforeActivationHeight(t *testing.T) {
+
+	tt := []struct {
+		name         string
+		memoryNodeFn func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		*upgrades
+	}{
+		{name: "change MaxBlocksize parameter before activation height", memoryNodeFn: NewInMemoryTendermintNodeProto, upgrades: &upgrades{codecUpgrade: codecUpgrade{true, 2}}}, // TODO: FULL PROTO SCENARIO
+	}
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			codec.TestMode = -2
+			if tc.upgrades != nil { // NOTE: Use to perform neccesary upgrades for test
+				codec.UpgradeHeight = tc.upgrades.codecUpgrade.height
+				_ = memCodecMod(tc.upgrades.codecUpgrade.upgradeMod)
+			}
+			resetTestACL()
+			_, kb, cleanup := tc.memoryNodeFn(t, oneAppTwoNodeGenesis())
+			time.Sleep(1 * time.Second)
+			cb, err := kb.GetCoinbase()
+			assert.Nil(t, err)
+			_, err = kb.List()
+			assert.Nil(t, err)
+			_, _, evtChan := subscribeTo(t, tmTypes.EventNewBlock)
+			<-evtChan // Wait for block
+			//Before Activation of the parameter ACL do not exist and the value and parameter should be 0 or nil
+			firstquery, _ := PCA.QueryParam(PCA.LastBlockHeight(), "pocketcore/BlockByteSize")
+			assert.Equal(t, "0", firstquery.Value)
+			memCli, stopCli, evtChan := subscribeTo(t, tmTypes.EventTx)
+			//Tx wont modify anything as ACL is not configured (Txresult should be gov code 5)
+			tx, err := gov.ChangeParamsTx(memCodec(), memCli, kb, cb.GetAddress(), "pocketcore/BlockByteSize", 9000000, "test", 10000, false)
+			assert.Nil(t, err)
+			assert.NotNil(t, tx)
+			select {
+			case _ = <-evtChan:
+				//fmt.Println(res)
+				assert.Nil(t, err)
+				o, _ := PCA.QueryParam(PCA.LastBlockHeight(), "pocketcore/BlockByteSize")
+				//value should be equal to the first query of the param
+				assert.Equal(t, firstquery.Value, o.Value)
+				cleanup()
+				stopCli()
+			}
+		})
+	}
+}
+
+func TestChangeParamsMaxBlocksizeAfterActivationHeight(t *testing.T) {
+
+	tt := []struct {
+		name         string
+		memoryNodeFn func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		*upgrades
+	}{
+		{name: "change MaxBlocksize parameter past activation height", memoryNodeFn: NewInMemoryTendermintNodeProto, upgrades: &upgrades{codecUpgrade: codecUpgrade{true, 2}}}, // TODO: FULL PROTO SCENARIO
+	}
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			codec.TestMode = -2
+			codec.UpgradeFeatureMap[codec.BlockSizeModifyKey] = tc.upgrades.codecUpgrade.height
+			if tc.upgrades != nil { // NOTE: Use to perform neccesary upgrades for test
+				codec.UpgradeHeight = tc.upgrades.codecUpgrade.height
+				_ = memCodecMod(tc.upgrades.codecUpgrade.upgradeMod)
+			}
+			resetTestACL()
+			_, kb, cleanup := tc.memoryNodeFn(t, oneAppTwoNodeGenesis())
+			time.Sleep(1 * time.Second)
+			cb, err := kb.GetCoinbase()
+			assert.Nil(t, err)
+			_, err = kb.List()
+			assert.Nil(t, err)
+			_, _, evtChan := subscribeTo(t, tmTypes.EventNewBlock)
+			<-evtChan // Wait for block
+			//After Activation of the parameter ACL should be created(allowing modifying the value) and parameter should have default value of 4000000
+			o, _ := PCA.QueryParam(PCA.LastBlockHeight(), "pocketcore/BlockByteSize")
+			assert.Equal(t, "4000000", o.Value)
+			memCli, stopCli, evtChan := subscribeTo(t, tmTypes.EventTx)
+			tx, err := gov.ChangeParamsTx(memCodec(), memCli, kb, cb.GetAddress(), "pocketcore/BlockByteSize", 9000000, "test", 10000, false)
+			assert.Nil(t, err)
+			assert.NotNil(t, tx)
+			select {
+			case _ = <-evtChan:
+				//fmt.Println(res)
+				assert.Nil(t, err)
+				o, _ := PCA.QueryParam(PCA.LastBlockHeight(), "pocketcore/BlockByteSize")
+				assert.Equal(t, "9000000", o.Value)
+				cleanup()
+				stopCli()
+			}
+		})
+	}
+}
+
 func TestUpgrade(t *testing.T) {
 	tt := []struct {
 		name         string
@@ -1050,12 +1142,11 @@ func TestClaimAminoTx(t *testing.T) {
 					ApplicationPubKey:  appPrivateKey.PublicKey().RawString(),
 					Chain:              sdk.PlaceholderHash,
 					SessionBlockHeight: 1,
-				}, pocketTypes.RelayEvidence, proof, sdk.NewInt(1000000))
+				}, pocketTypes.RelayEvidence, proof, sdk.NewInt(1000000), pocketTypes.GlobalEvidenceCache)
 				assert.Nil(t, err)
 			}
 			_, _, evtChan := subscribeTo(t, tmTypes.EventTx)
 			res := <-evtChan
-			fmt.Println(res)
 			if res.Events["message.action"][0] != pocketTypes.EventTypeClaim {
 				t.Fatal("claim message was not received first")
 			}
@@ -1125,7 +1216,7 @@ func TestClaimProtoTx(t *testing.T) {
 					ApplicationPubKey:  appPrivateKey.PublicKey().RawString(),
 					Chain:              sdk.PlaceholderHash,
 					SessionBlockHeight: 1,
-				}, pocketTypes.RelayEvidence, proof, sdk.NewInt(1000000))
+				}, pocketTypes.RelayEvidence, proof, sdk.NewInt(1000000), pocketTypes.GlobalEvidenceCache)
 				assert.Nil(t, err)
 			}
 			_, _, evtChan := subscribeTo(t, tmTypes.EventTx)
@@ -1163,7 +1254,7 @@ func TestAminoClaimTxChallenge(t *testing.T) {
 			challenges := NewValidChallengeProof(t, keys, 5)
 			_, _, cleanup := tc.memoryNodeFn(t, genBz)
 			for _, c := range challenges {
-				c.Store(sdk.NewInt(1000000))
+				c.Store(sdk.NewInt(1000000), pocketTypes.GlobalEvidenceCache)
 			}
 			_, _, evtChan := subscribeTo(t, tmTypes.EventTx)
 			res := <-evtChan // Wait for tx
@@ -1200,7 +1291,7 @@ func TestProtoClaimTxChallenge(t *testing.T) {
 			challenges := NewValidChallengeProof(t, keys, 5)
 			_, _, cleanup := tc.memoryNodeFn(t, genBz)
 			for _, c := range challenges {
-				c.Store(sdk.NewInt(1000000))
+				c.Store(sdk.NewInt(1000000), pocketTypes.GlobalEvidenceCache)
 			}
 			_, _, evtChan := subscribeTo(t, tmTypes.EventTx)
 			res := <-evtChan // Wait for tx

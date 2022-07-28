@@ -96,6 +96,7 @@ func GetRoutes() Routes {
 		Route{Name: "Stop", Method: "POST", Path: "/v1/private/stop", HandlerFunc: Stop},
 		Route{Name: "ServiceCORS", Method: "OPTIONS", Path: "/v1/client/relay", HandlerFunc: Relay},
 		Route{Name: "QueryAccount", Method: "POST", Path: "/v1/query/account", HandlerFunc: Account},
+		Route{Name: "QueryAccounts", Method: "POST", Path: "/v1/query/accounts", HandlerFunc: Accounts},
 		Route{Name: "QueryAccountTxs", Method: "POST", Path: "/v1/query/accounttxs", HandlerFunc: AccountTxs},
 		Route{Name: "QueryACL", Method: "POST", Path: "/v1/query/acl", HandlerFunc: ACL},
 		Route{Name: "QueryAllParams", Method: "POST", Path: "/v1/query/allparams", HandlerFunc: AllParams},
@@ -120,6 +121,7 @@ func GetRoutes() Routes {
 		Route{Name: "QueryTX", Method: "POST", Path: "/v1/query/tx", HandlerFunc: Tx},
 		Route{Name: "QueryUpgrade", Method: "POST", Path: "/v1/query/upgrade", HandlerFunc: Upgrade},
 		Route{Name: "QuerySigningInfo", Method: "POST", Path: "/v1/query/signinginfo", HandlerFunc: SigningInfo},
+		Route{Name: "LocalNodes", Method: "POST", Path: "/v1/private/nodes", HandlerFunc: LocalNodes},
 		Route{Name: "QueryChains", Method: "POST", Path: "/v1/private/chains", HandlerFunc: Chains},
 	}
 	return routes

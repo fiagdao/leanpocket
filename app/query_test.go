@@ -795,7 +795,7 @@ func TestQueryRelay(t *testing.T) {
 					ApplicationPubKey:  aat.ApplicationPublicKey,
 					Chain:              relay.Proof.Blockchain,
 					SessionBlockHeight: relay.Proof.SessionBlockHeight,
-				}, types.RelayEvidence, sdk.NewInt(10000))
+				}, types.RelayEvidence, sdk.NewInt(10000), types.GlobalEvidenceCache)
 				assert.Nil(t, err)
 				assert.NotNil(t, inv)
 				assert.Equal(t, inv.NumOfProofs, int64(1))
@@ -804,6 +804,106 @@ func TestQueryRelay(t *testing.T) {
 				gock.Off()
 				return
 			}
+		})
+	}
+}
+
+func TestQueryRelayMultipleNodes(t *testing.T) {
+	const headerKey = "foo"
+	const headerVal = "bar"
+
+	expectedRequest := `"jsonrpc":"2.0","method":"web3_sha3","params":["0x68656c6c6f20776f726c64"],"id":64`
+	expectedResponse := "0x47173285a8d7341e5e972fc677286384f802f8ef42a5ec5f03bbfa254cb01fad"
+	tt := []struct {
+		name         string
+		memoryNodeFn func(t *testing.T, genesisState []byte, validators []crypto.PrivateKey) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		*upgrades
+	}{
+		{name: "query relay multiple validators amino", memoryNodeFn: NewInMemoryTendermintNodeAminoWithValidators, upgrades: &upgrades{codecUpgrade: codecUpgrade{false, 7000}}},
+		{name: "query relay multiple validators proto", memoryNodeFn: NewInMemoryTendermintNodeProtoWithValidators, upgrades: &upgrades{codecUpgrade: codecUpgrade{true, 2}}},
+	}
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			sdk.VbCCache = sdk.NewCache(1)
+			if tc.upgrades != nil { // NOTE: Use to perform neccesary upgrades for test
+				codec.UpgradeHeight = tc.codecUpgrade.height
+				_ = memCodecMod(tc.codecUpgrade.upgradeMod)
+			}
+			time.Sleep(time.Second * 2)
+			genBz, validators, servicers, app := generateGenesis(5, 5, 1)
+			validators = append(validators, servicers...)
+			// setup relay endpoint
+			gock.New(sdk.PlaceholderURL).
+				Post("").
+				BodyString(expectedRequest).
+				MatchHeader(headerKey, headerVal).
+				Reply(200).
+				BodyString(expectedResponse)
+			_, _, cleanup := tc.memoryNodeFn(t, genBz, validators)
+			// setup AAT
+			aat := types.AAT{
+				Version:              "0.0.1",
+				ApplicationPublicKey: app[0].PublicKey().RawString(),
+				ClientPublicKey:      app[0].PublicKey().RawString(),
+				ApplicationSignature: "",
+			}
+			sig, err := app[0].Sign(aat.Hash())
+			if err != nil {
+				panic(err)
+			}
+			aat.ApplicationSignature = hex.EncodeToString(sig)
+			payload := types.Payload{
+				Data:    expectedRequest,
+				Headers: map[string]string{headerKey: headerVal},
+			}
+			_, stopCli, evtChan := subscribeTo(t, tmTypes.EventNewBlock)
+			<-evtChan // Wait for block
+			// setup relay
+			for _, v := range validators {
+				relay := types.Relay{
+					Payload: payload,
+					Meta:    types.RelayMeta{BlockHeight: 5}, // todo race condition here
+					Proof: types.RelayProof{
+						Entropy:            32598345349034509,
+						SessionBlockHeight: 1,
+						ServicerPubKey:     v.PublicKey().RawString(),
+						Blockchain:         sdk.PlaceholderHash,
+						Token:              aat,
+						Signature:          "",
+					},
+				}
+				relay.Proof.RequestHash = relay.RequestHashString()
+				sig, err = app[0].Sign(relay.Proof.Hash())
+				if err != nil {
+					panic(err)
+				}
+				relay.Proof.Signature = hex.EncodeToString(sig)
+				res, _, err := PCA.HandleRelay(relay)
+				assert.Nil(t, err, err)
+				assert.Equal(t, expectedResponse, res.Response)
+				gock.New(sdk.PlaceholderURL).
+					Post("").
+					BodyString(expectedRequest).
+					Reply(200).
+					BodyString(expectedResponse)
+
+				validatorAddress := sdk.GetAddress(v.PublicKey())
+				node, nodeErr := types.GetPocketNodeByAddress(&validatorAddress)
+
+				assert.Nil(t, nodeErr)
+				inv, err := types.GetEvidence(types.SessionHeader{
+					ApplicationPubKey:  aat.ApplicationPublicKey,
+					Chain:              relay.Proof.Blockchain,
+					SessionBlockHeight: relay.Proof.SessionBlockHeight,
+				}, types.RelayEvidence, sdk.NewInt(10000), node.EvidenceStore)
+				assert.Nil(t, err)
+				assert.NotNil(t, inv)
+				assert.Equal(t, inv.NumOfProofs, int64(1))
+			}
+			cleanup()
+			stopCli()
+			gock.Off()
+			return
 		})
 	}
 }
@@ -951,6 +1051,32 @@ func TestQueryNonExistingAccountBalance(t *testing.T) {
 			assert.Equal(t, sdk.NewInt(0), got)
 			cleanup()
 			stopCli()
+		})
+	}
+}
+
+func TestQueryAccounts(t *testing.T) {
+	tt := []struct {
+		name         string
+		memoryNodeFn func(t *testing.T, genesisState []byte) (tendermint *node.Node, keybase keys.Keybase, cleanup func())
+		*upgrades
+	}{
+		{name: "query accounts amino", memoryNodeFn: NewInMemoryTendermintNodeAmino, upgrades: &upgrades{codecUpgrade: codecUpgrade{false, 7000}}},
+		{name: "query accounts proto", memoryNodeFn: NewInMemoryTendermintNodeProto, upgrades: &upgrades{codecUpgrade: codecUpgrade{true, 2}}},
+	}
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.upgrades != nil { // NOTE: Use to perform neccesary upgrades for test
+				codec.UpgradeHeight = tc.upgrades.codecUpgrade.height
+				_ = memCodecMod(tc.upgrades.codecUpgrade.upgradeMod)
+			}
+			_, _, cleanup := tc.memoryNodeFn(t, oneAppTwoNodeGenesis())
+			got, err := PCA.QueryAccounts(PCA.LastBlockHeight(), 1, 1)
+			assert.Nil(t, err)
+			assert.NotNil(t, got)
+			assert.NotEqual(t, 1, got.Total)
+
+			cleanup()
 		})
 	}
 }

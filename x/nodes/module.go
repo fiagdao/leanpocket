@@ -56,6 +56,10 @@ type AppModule struct {
 	keeper keeper.Keeper
 }
 
+func (am AppModule) ConsensusParamsUpdate(ctx sdk.Ctx) *abci.ConsensusParams {
+	return &abci.ConsensusParams{}
+}
+
 // NewAppModule creates a new AppModule object
 func NewAppModule(keeper keeper.Keeper) AppModule {
 	return AppModule{
@@ -114,6 +118,16 @@ func (am AppModule) ExportGenesis(ctx sdk.Ctx) json.RawMessage {
 
 // module begin-block
 func (am AppModule) BeginBlock(ctx sdk.Ctx, req abci.RequestBeginBlock) {
+	if am.keeper.Cdc.IsOnNamedFeatureActivationHeight(ctx.BlockHeight(), codec.RSCALKey) {
+		//on the height we set the default value
+		params := am.keeper.GetParams(ctx)
+		params.ServicerStakeFloorMultiplier = types.DefaultServicerStakeFloorMultiplier
+		params.ServicerStakeWeightMultiplier = types.DefaultServicerStakeWeightMultiplier
+		params.ServicerStakeWeightCeiling = types.DefaultServicerStakeWeightCeiling
+		params.ServicerStakeFloorMultiplierExponent = types.DefaultServicerStakeFloorMultiplierExponent
+		am.keeper.SetParams(ctx, params)
+	}
+
 	keeper.BeginBlocker(ctx, req, am.keeper)
 }
 

@@ -55,6 +55,11 @@ type AppModule struct {
 	keeper         keeper.Keeper // responsible for store operations
 }
 
+func (am AppModule) ConsensusParamsUpdate(ctx sdk.Ctx) *abci.ConsensusParams {
+
+	return am.keeper.ConsensusParamUpdate(ctx)
+}
+
 func (am AppModule) UpgradeCodec(ctx sdk.Ctx) {
 	am.keeper.UpgradeCodec(ctx)
 }
@@ -92,6 +97,12 @@ func (am AppModule) NewQuerierHandler() sdk.Querier {
 
 // "BeginBlock" - Functionality that is called at the beginning of (every) block
 func (am AppModule) BeginBlock(ctx sdk.Ctx, req abci.RequestBeginBlock) {
+	if am.keeper.Cdc.IsOnNamedFeatureActivationHeight(ctx.BlockHeight(), codec.BlockSizeModifyKey) {
+		//on the height we set the default value
+		params := am.keeper.GetParams(ctx)
+		params.BlockByteSize = types.DefaultBlockByteSize
+		am.keeper.SetParams(ctx, params)
+	}
 	// delete the expired claims
 	am.keeper.DeleteExpiredClaims(ctx)
 }
@@ -100,33 +111,38 @@ func (am AppModule) BeginBlock(ctx sdk.Ctx, req abci.RequestBeginBlock) {
 func (am AppModule) EndBlock(ctx sdk.Ctx, _ abci.RequestEndBlock) []abci.ValidatorUpdate {
 	// get blocks per session
 	blocksPerSession := am.keeper.BlocksPerSession(ctx)
-	// get self address
-	addr := am.keeper.GetSelfAddress(ctx)
-	if addr != nil {
-		// use the offset as a trigger to see if it's time to attempt to submit proofs
-		if (ctx.BlockHeight()+int64(addr[0]))%blocksPerSession == 1 && ctx.BlockHeight() != 1 {
-			// run go routine because cannot access TmNode during end-block period
-			go func() {
-				// use this sleep timer to bypass the beginBlock lock over transactions
-				time.Sleep(time.Duration(rand.Intn(5000)) * time.Millisecond)
-				s, err := am.keeper.TmNode.Status()
-				if err != nil {
-					ctx.Logger().Error(fmt.Sprintf("could not get status for tendermint node (cannot submit claims/proofs in this state): %s", err.Error()))
-				} else {
-					if !s.SyncInfo.CatchingUp {
-						// auto send the proofs
-						am.keeper.SendClaimTx(ctx, am.keeper, am.keeper.TmNode, ClaimTx)
-						// auto claim the proofs
-						am.keeper.SendProofTx(ctx, am.keeper.TmNode, ProofTx)
-						// clear session cache and db
-						types.ClearSessionCache()
-					}
-				}
-			}()
+
+	// run go routine because cannot access TmNode during end-block period
+	go func() {
+		// use this sleep timer to bypass the beginBlock lock over transactions
+		minSleep := 2000
+		maxSleep := 5000
+		time.Sleep(time.Duration(rand.Intn(maxSleep-minSleep)+minSleep) * time.Millisecond)
+
+		// check the consensus reactor sync status
+		status, err := am.keeper.TmNode.ConsensusReactorStatus()
+		if err != nil {
+			ctx.Logger().Error(fmt.Sprintf("could not get status for tendermint node (cannot submit claims/proofs in this state): %s", err.Error()))
+			return
 		}
-	} else {
-		ctx.Logger().Error("could not get self address in end block")
-	}
+
+		if status.IsCatchingUp {
+			ctx.Logger().Error("tendermint is currently syncing still (cannot submit claims/proofs in this state)")
+			return
+		}
+
+		for _, node := range types.GlobalPocketNodes {
+			address := node.GetAddress()
+			if (ctx.BlockHeight()+int64(address[0]))%blocksPerSession == 1 && ctx.BlockHeight() != 1 {
+				// auto send the proofs
+				am.keeper.SendClaimTx(ctx, am.keeper, am.keeper.TmNode, node, ClaimTx)
+				// auto claim the proofs
+				am.keeper.SendProofTx(ctx, am.keeper.TmNode, node, ProofTx)
+				// clear session cache and db
+				types.ClearSessionCache(node.SessionStore)
+			}
+		}
+	}()
 	return []abci.ValidatorUpdate{}
 }
 
