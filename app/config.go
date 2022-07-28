@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	log2 "log"
 	"os"
+	"path"
 	fp "path/filepath"
 	"strings"
 	"sync"
@@ -48,16 +49,6 @@ import (
 	"github.com/tendermint/tendermint/rpc/client/local"
 	dbm "github.com/tendermint/tm-db"
 	"golang.org/x/crypto/ssh/terminal"
-	"io"
-	"io/ioutil"
-	log2 "log"
-	"os"
-	"path"
-	fp "path/filepath"
-	"strings"
-	"sync"
-	"syscall"
-	"time"
 )
 
 var (
@@ -88,10 +79,8 @@ func InitApp(datadir, tmNode, persistentPeers, seeds, remoteCLIURL string, keyba
 	// init config
 	InitConfig(datadir, tmNode, persistentPeers, seeds, remoteCLIURL)
 	GlobalConfig.PocketConfig.Cache = useCache
-
 	// init AuthToken
-	InitAuthToken()
-
+	InitAuthToken(GlobalConfig.PocketConfig.GenerateTokenOnStart)
 	// get hosted blockchains
 	chains := NewHostedChains(false)
 	if GlobalConfig.PocketConfig.ChainsHotReload {
@@ -126,13 +115,11 @@ func InitApp(datadir, tmNode, persistentPeers, seeds, remoteCLIURL string, keyba
 
 	// init configs & evidence/session caches
 	InitPocketCoreConfig(chains, logger)
-
 	// init genesis
 	InitGenesis(genesisType, logger)
 	// log the config and chains
 	logger.Debug(fmt.Sprintf("Pocket Config: \n%v", GlobalConfig))
 	// init the tendermint node
-
 	return InitTendermint(keybase, chains, logger)
 }
 
