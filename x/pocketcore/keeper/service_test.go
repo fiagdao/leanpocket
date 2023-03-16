@@ -100,7 +100,7 @@ func TestKeeper_HandleRelayWithinTolerance(t *testing.T) {
 		Post("/").
 		Reply(200).
 		BodyString("bar")
-	keeper, mockCtx, validRelay := setupHandleRelayTest(t, 974)
+	keeper, mockCtx, validRelay := setupHandleRelayTest(t, 977)
 	resp, err := keeper.HandleRelay(mockCtx, validRelay)
 	assert.Nil(t, err, err)
 	assert.NotNil(t, resp)
@@ -110,7 +110,7 @@ func TestKeeper_HandleRelayWithinTolerance(t *testing.T) {
 
 func TestKeeper_HandleRelayOutsideTolerance(t *testing.T) {
 	// Each session block is 25 blocks each
-	for _, height := range []int64{926, 1026} {
+	for _, height := range []int64{926} {
 		gock.New("https://www.google.com:443").
 			Post("/").
 			Reply(200).

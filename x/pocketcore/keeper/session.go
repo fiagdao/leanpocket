@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"encoding/hex"
+	"fmt"
 	sdk "github.com/pokt-network/pocket-core/types"
 	"github.com/pokt-network/pocket-core/x/nodes/exported"
 	"github.com/pokt-network/pocket-core/x/pocketcore/types"
@@ -69,8 +70,8 @@ func (k Keeper) IsLatestSessionHeightWithinTolerance(ctx sdk.Ctx, relaySessionBl
 	latestSessionHeight := k.GetLatestSessionBlockHeight(ctx)
 	tolerance := types.GlobalPocketConfig.ClientSessionSyncAllowance * k.posKeeper.BlocksPerSession(ctx)
 	minHeight := latestSessionHeight - tolerance
-	maxHeight := latestSessionHeight + tolerance
-	return sdk.IsBetween(relaySessionBlockHeight, minHeight, maxHeight)
+	fmt.Println(minHeight, tolerance, relaySessionBlockHeight, latestSessionHeight)
+	return sdk.IsBetween(relaySessionBlockHeight, minHeight, latestSessionHeight)
 }
 
 // "GetLatestSessionBlockHeight" - Returns the latest session block height (first block of the session, (see blocksPerSession))
