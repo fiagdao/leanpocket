@@ -60,7 +60,7 @@ func (k Keeper) IsSessionBlock(ctx sdk.Ctx) bool {
 	return ctx.BlockHeight()%k.posKeeper.BlocksPerSession(ctx) == 1
 }
 
-// IsLatestSessionBlockHeightWithinTolerance checks if the latest session block height is within range of the latest known session block height
+// IsLatestSessionBlockHeightWithinTolerance checks if the latest session block height is within the configurable session sync allowance.
 func (k Keeper) IsLatestSessionHeightWithinTolerance(ctx sdk.Ctx, relaySessionBlockHeight int64) bool {
 	// Session block height can never be zero.
 	if relaySessionBlockHeight <= 0 {
