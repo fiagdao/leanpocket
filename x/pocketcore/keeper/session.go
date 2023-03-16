@@ -10,16 +10,21 @@ import (
 // "HandleDispatch" - Handles a client request for their session information
 func (k Keeper) HandleDispatch(ctx sdk.Ctx, header types.SessionHeader) (*types.DispatchResponse, sdk.Error) {
 	// retrieve the latest session block height
-	latestSessionBlockHeight := k.GetLatestSessionBlockHeight(ctx)
-	// set the session block height
-	header.SessionBlockHeight = latestSessionBlockHeight
+	var sessionBlockHeight int64
+	if types.GlobalPocketConfig.ClientSessionSyncAllowance > 0 && header.SessionBlockHeight != 0 {
+		sessionBlockHeight = header.SessionBlockHeight
+	} else {
+		sessionBlockHeight = k.GetLatestSessionBlockHeight(ctx)
+		header.SessionBlockHeight = sessionBlockHeight
+	}
+
 	// validate the header
 	err := header.ValidateHeader()
 	if err != nil {
 		return nil, err
 	}
 	// get the session context
-	sessionCtx, er := ctx.PrevCtx(latestSessionBlockHeight)
+	sessionCtx, er := ctx.PrevCtx(sessionBlockHeight)
 	if er != nil {
 		return nil, sdk.ErrInternal(er.Error())
 	}
@@ -57,9 +62,14 @@ func (k Keeper) IsSessionBlock(ctx sdk.Ctx) bool {
 
 // IsLatestSessionBlockHeightWithinTolerance checks if the latest session block height is within range of the latest known session block height
 func (k Keeper) IsLatestSessionHeightWithinTolerance(ctx sdk.Ctx, relaySessionBlockHeight int64) bool {
+	// Session block height can never be zero.
+	if relaySessionBlockHeight <= 0 {
+		return false
+	}
 	latestSessionHeight := k.GetLatestSessionBlockHeight(ctx)
-	minHeight := latestSessionHeight - types.GlobalPocketConfig.ClientSessionSyncAllowance
-	maxHeight := latestSessionHeight + types.GlobalPocketConfig.ClientSessionSyncAllowance
+	tolerance := types.GlobalPocketConfig.ClientSessionSyncAllowance * k.posKeeper.BlocksPerSession(ctx)
+	minHeight := latestSessionHeight - tolerance
+	maxHeight := latestSessionHeight + tolerance
 	return sdk.IsBetween(relaySessionBlockHeight, minHeight, maxHeight)
 }
 

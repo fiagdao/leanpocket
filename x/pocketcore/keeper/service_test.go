@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"encoding/hex"
+	"gopkg.in/h2non/gock.v1"
 	"testing"
 
 	sdk "github.com/pokt-network/pocket-core/types"
@@ -9,13 +10,12 @@ import (
 	appsTypes "github.com/pokt-network/pocket-core/x/apps/types"
 	"github.com/pokt-network/pocket-core/x/pocketcore/types"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/h2non/gock.v1"
 )
 
-func TestKeeper_HandleRelay(t *testing.T) {
+func setupHandleRelayTest(t *testing.T, currentBlockHeight int64) (keeper Keeper, mockCtx *Ctx, validRelay types.Relay) {
 	ethereum := hex.EncodeToString([]byte{01})
 	ctx, _, _, _, keeper, keys, kb := createTestInput(t, false)
-	mockCtx := new(Ctx)
+	mockCtx = new(Ctx)
 	ak := keeper.appKeeper.(appsKeeper.Keeper)
 	clientPrivateKey := getRandomPrivateKey()
 	clientPubKey := clientPrivateKey.PublicKey().RawString()
@@ -38,7 +38,7 @@ func TestKeeper_HandleRelay(t *testing.T) {
 		Path:    "",
 		Headers: nil,
 	}
-	validRelay := types.Relay{
+	validRelay = types.Relay{
 		Payload: p,
 		Meta:    types.RelayMeta{BlockHeight: 976},
 		Proof: types.RelayProof{
@@ -66,25 +66,60 @@ func TestKeeper_HandleRelay(t *testing.T) {
 		t.Fatalf(er.Error())
 	}
 	validRelay.Proof.Signature = hex.EncodeToString(clientSig)
+
+	mockCtx.On("KVStore", keeper.storeKey).Return(ctx.KVStore(keeper.storeKey))
+	mockCtx.On("KVStore", keys["pos"]).Return(ctx.KVStore(keys["pos"]))
+	mockCtx.On("KVStore", keys["params"]).Return(ctx.KVStore(keys["params"]))
+	mockCtx.On("KVStore", keys["application"]).Return(ctx.KVStore(keys["application"]))
+	mockCtx.On("BlockHeight").Return(currentBlockHeight)
+	mockCtx.On("PrevCtx", int64(976)).Return(ctx, nil)
+	mockCtx.On("PrevCtx", keeper.GetLatestSessionBlockHeight(mockCtx)).Return(ctx, nil)
+	mockCtx.On("Logger").Return(ctx.Logger())
+	return
+}
+
+func TestKeeper_HandleRelay(t *testing.T) {
 	defer gock.Off() // Flush pending mocks after test execution
 
 	gock.New("https://www.google.com:443").
 		Post("/").
 		Reply(200).
 		BodyString("bar")
-
-	mockCtx.On("KVStore", keeper.storeKey).Return(ctx.KVStore(keeper.storeKey))
-	mockCtx.On("KVStore", keys["pos"]).Return(ctx.KVStore(keys["pos"]))
-	mockCtx.On("KVStore", keys["params"]).Return(ctx.KVStore(keys["params"]))
-	mockCtx.On("KVStore", keys["application"]).Return(ctx.KVStore(keys["application"]))
-	mockCtx.On("BlockHeight").Return(ctx.BlockHeight())
-	mockCtx.On("PrevCtx", int64(976)).Return(ctx, nil)
-	mockCtx.On("PrevCtx", keeper.GetLatestSessionBlockHeight(mockCtx)).Return(ctx, nil)
-	mockCtx.On("Logger").Return(ctx.Logger())
-
+	keeper, mockCtx, validRelay := setupHandleRelayTest(t, 976)
 	resp, err := keeper.HandleRelay(mockCtx, validRelay)
 	assert.Nil(t, err, err)
 	assert.NotNil(t, resp)
 	assert.NotEmpty(t, resp)
 	assert.Equal(t, resp.Response, "bar")
+}
+
+func TestKeeper_HandleRelayWithinTolerance(t *testing.T) {
+	defer gock.Off() // Flush pending mocks after test execution
+
+	gock.New("https://www.google.com:443").
+		Post("/").
+		Reply(200).
+		BodyString("bar")
+	keeper, mockCtx, validRelay := setupHandleRelayTest(t, 974)
+	resp, err := keeper.HandleRelay(mockCtx, validRelay)
+	assert.Nil(t, err, err)
+	assert.NotNil(t, resp)
+	assert.NotEmpty(t, resp)
+	assert.Equal(t, resp.Response, "bar")
+}
+
+func TestKeeper_HandleRelayOutsideTolerance(t *testing.T) {
+	// Each session block is 25 blocks each
+	for _, height := range []int64{926, 1026} {
+		gock.New("https://www.google.com:443").
+			Post("/").
+			Reply(200).
+			BodyString("bar")
+		keeper, mockCtx, validRelay := setupHandleRelayTest(t, height)
+		types.GlobalPocketConfig.ClientBlockSyncAllowance = 100
+		_, err := keeper.HandleRelay(mockCtx, validRelay)
+		assert.NotNil(t, err)
+		assert.Equal(t, types.NewInvalidBlockHeightError(types.ModuleName), err)
+		gock.Off()
+	}
 }
